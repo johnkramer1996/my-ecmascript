@@ -1,0 +1,25 @@
+{
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "pretty": true,
+    "sourceMap": true,
+    "target": "ESNext",
+    "outDir": "./dist",
+    // "lib": ["es6"],
+    "resolveJsonModule": true,
+    // "types": ["node"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "strictNullChecks": true,
+    "strictPropertyInitialization": true,
+    "baseUrl": "./src"
+  },
+  "include": ["src/**/*"]
+}
