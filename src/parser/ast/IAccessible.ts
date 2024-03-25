@@ -4,8 +4,9 @@ import IExpression from './IExpression'
 export interface IAccessible extends IExpression {
   get(): IValue
   set(value: IValue): IValue
-  define(value: IValue): IValue
-  getName(): string
+  define(value: IValue): void
+  hoisting(kind: string): void
+  // getName(): string
 }
 
 export const instanceOfIAccessible = (object: any): object is IAccessible => {

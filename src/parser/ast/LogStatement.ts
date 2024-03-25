@@ -13,7 +13,7 @@ export default class LogStatement implements IStatement {
   }
 
   public execute(): void {
-    console.log(this.expression.eval().asString())
+    console.info(this.expression.eval().asString())
   }
 
   public accept(visitor: IVisitor): void {

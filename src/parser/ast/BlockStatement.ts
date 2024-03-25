@@ -1,23 +1,18 @@
 import { Scope } from 'parser/lib/Variables'
-import { VaraibleDeclaration } from './AssignmentExpression'
-import FunctionDeclaration from './FunctionDefineStatement'
+import { VaraibleDeclaration } from './VariableDeclarator'
+import { FunctionDeclarationStatement } from './FunctionDeclarationStatement'
 import IStatement from './IStatement'
 import IVisitor from './IVisitor'
-import { Location } from 'parser/Parser'
 
 export class BlockStatement implements IStatement {
-  public start: number
-  public end: number
   public scope!: Scope
 
-  constructor(public body: IStatement[]) {
-    this.start = Location.endBlock().getStart()
-    this.end = Location.getPrevToken().getEnd()
-  }
+  constructor(public body: IStatement[]) {}
 
   public execute(): void {
+    // TODO: add new scope
     for (const statement of this.body) {
-      if (statement instanceof VaraibleDeclaration || statement instanceof FunctionDeclaration) {
+      if (statement instanceof VaraibleDeclaration || statement instanceof FunctionDeclarationStatement) {
         statement.hoisting()
       }
     }

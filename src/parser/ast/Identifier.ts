@@ -1,35 +1,30 @@
 import IVisitor from './IVisitor'
 import { IAccessible } from './IAccessible'
-import { Location } from 'parser/Parser'
-import Variables from 'parser/lib/Variables'
+import { Variables } from 'parser/lib/Variables'
 import IValue from 'parser/lib/IValue'
+import IExpression from './IExpression'
 
-export class Identifier implements IAccessible {
-  // start: number
-  // end: number
-  constructor(private name: string) {
-    // this.start = Location.getPrevToken().start
-    // this.end = Location.getPrevToken().end
-  }
+export class Identifier implements IExpression, IAccessible {
+  constructor(public name: string) {}
 
   public eval(): IValue {
-    return Variables.get(this.getName())
+    return this.get()
   }
 
   public get(): IValue {
-    return Variables.get(this.getName())
+    return Variables.get(this.name)
   }
 
   public set(value: IValue): IValue {
-    return Variables.set(this.getName(), value), value
+    return Variables.set(this.name, value), value
   }
 
-  public define(value: IValue): IValue {
-    return Variables.define(this.getName(), value), value
+  public define(value: IValue): void {
+    Variables.define(this.name, value)
   }
 
-  public getName(): string {
-    return this.name
+  public hoisting(kind: string, value?: IValue): void {
+    Variables.hoisting(this.name, kind, value)
   }
 
   public accept(visitor: IVisitor): void {

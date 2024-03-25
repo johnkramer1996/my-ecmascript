@@ -12,7 +12,7 @@ export class CallInfo {
 
 export default class CallStack {
   private static calls: CallInfo[] = []
-  private static return: IValue
+  private static return: IValue = UndefinedValue.UNDEFINED
 
   public static enter(name: string): void {
     this.calls.push(new CallInfo(name))

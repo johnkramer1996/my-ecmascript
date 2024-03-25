@@ -36,7 +36,6 @@ export default class Lexer implements ILexer {
     ['&=', TokenType.AMPEQ],
     ['^=', TokenType.CARETEQ],
     ['|=', TokenType.BAREQ],
-    ['::=', TokenType.COLONCOLONEQ],
     ['<<=', TokenType.LTLTEQ],
     ['>>=', TokenType.GTGTEQ],
     ['>>>=', TokenType.GTGTGTEQ],
@@ -57,14 +56,22 @@ export default class Lexer implements ILexer {
     ['}', TokenType.RBRACE],
     ['.', TokenType.DOT],
     [',', TokenType.COMMA],
-    ['::', TokenType.COLONCOLON],
+    ['=>', TokenType.ARROW],
   ])
   private static OPERATOR_CHARS = '+-*/%()[]{}=<>!&|.,^~?:'
   private static SINGLE_OR_DOUBLE_QUOTE = ["'", '"']
   public static KEYWORDS = new Map([
     ['log', TokenType.LOG],
+    ['var', TokenType.VAR],
     ['const', TokenType.CONST],
     ['let', TokenType.LET],
+    ['function', TokenType.FUNCTION],
+    ['return', TokenType.RETURN],
+    ['new', TokenType.NEW],
+    ['class', TokenType.CLASS],
+    ['constructor', TokenType.CONSTRUCTOR],
+    ['this', TokenType.THIS],
+    ['static', TokenType.STATIC],
   ])
 
   private tokens: IToken[] = []
@@ -100,6 +107,8 @@ export default class Lexer implements ILexer {
     } catch (e) {
       if (e instanceof LexerException) {
         console.error(`${e.name}: ${e.message}`, e.row, e.col)
+      } else {
+        console.error(e)
       }
     }
     return this.tokens
@@ -160,12 +169,13 @@ export default class Lexer implements ILexer {
     const number = this.getNextChars((current) => {
       const isDot = current === '.'
       if (isDot) {
-        if (hasDot) throw this.error('Invalid float number')
+        // if (hasDot) throw this.error('Invalid float number')
+        if (hasDot) return false
         hasDot = true
       }
       return isDot || this.isDigit(current)
     })
-    this.addToken(TokenType.NUMBER, number)
+    this.addToken(TokenType.NUMBER, number[number.length - 1] === '.' ? number.slice(0, -1) : number)
   }
 
   private tokenizeHexNumber(): void {

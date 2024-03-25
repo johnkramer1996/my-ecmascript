@@ -2,9 +2,10 @@ import IExpression from './IExpression'
 import IVisitor from './IVisitor'
 import { IAccessible } from './IAccessible'
 import IValue from 'parser/lib/IValue'
-import Variables from 'parser/lib/Variables'
+import { Variables } from 'parser/lib/Variables'
+import UndefinedValue from 'parser/lib/types/UndefinedValue'
 
-export class AssignmentPattern implements IAccessible {
+export class AssignmentPattern implements IExpression, IAccessible {
   constructor(public identifier: IAccessible, public valueExpr: IExpression) {}
 
   public eval(): IValue {
@@ -12,22 +13,24 @@ export class AssignmentPattern implements IAccessible {
   }
 
   public get(): IValue {
-    return Variables.get(this.getName())
+    return this.identifier.get()
   }
 
   public set(value: IValue): IValue {
-    const defaultExpr = this.getValueExpr().eval()
-    return Variables.set(this.getName(), value || defaultExpr)
+    return this.define(value), value
   }
 
-  public define(value: IValue): IValue {
-    const defaultExpr = this.getValueExpr().eval()
-    return Variables.define(this.getName(), value || defaultExpr)
+  public define(value: IValue): void {
+    this.identifier.define(value === UndefinedValue.UNDEFINED ? this.getValueExpr().eval() : value)
   }
 
-  public getName(): string {
-    return this.identifier.getName()
+  public hoisting(kind: string): void {
+    this.identifier.hoisting(kind)
   }
+
+  // public getName(): string {
+  //   return this.identifier.getName()
+  // }
 
   public getValueExpr(): IExpression {
     return this.valueExpr

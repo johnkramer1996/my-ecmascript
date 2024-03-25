@@ -2,6 +2,7 @@ import TypeException from 'exceptions/TypeException'
 import IValue from '../IValue'
 import Types from './Types'
 import Value from '../Value'
+import UndefinedValue from './UndefinedValue'
 
 export class MyArray<T extends IValue> extends Array<T> implements Iterable<IValue> {
   toString() {
@@ -9,7 +10,7 @@ export class MyArray<T extends IValue> extends Array<T> implements Iterable<IVal
   }
 }
 
-export default class ArrayValue extends Value<IValue[]> {
+export default class ArrayValue extends Value<MyArray<IValue>> {
   public static add(array: ArrayValue, value: IValue): ArrayValue {
     return new ArrayValue([...array, value])
   }
@@ -28,12 +29,12 @@ export default class ArrayValue extends Value<IValue[]> {
     return this.value.length
   }
 
-  public get(index: number): IValue {
-    return this.value[index]
+  public get(property: string): IValue {
+    return this.value[Number(property)] ?? UndefinedValue.UNDEFINED
   }
 
-  public set(index: number, value: IValue) {
-    this.value[index] = value
+  public set(index: number | string, value: IValue) {
+    this.value[Number(index)] = value
   }
 
   public getCopyElements(): IValue[] {

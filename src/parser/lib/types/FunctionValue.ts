@@ -3,50 +3,78 @@ import Value from '../Value'
 import Types from './Types'
 import TypeException from 'exceptions/TypeException'
 import IValue from '../IValue'
-import Variables, { BuiltInFunction, Scope } from '../Variables'
-import UserDefinedFunction from '../UserDefinedFunction'
+import { Scope, Variables } from '../Variables'
 import UndefinedValue from './UndefinedValue'
 import CallStack from '../CallStack'
 import { Params } from 'parser/ast/Params'
+import { Identifier } from 'parser/ast/Identifier'
+import ObjectValue, { MyObject } from './ObjectValue'
+import Function from '../Function'
+import NumberValue from './NumberValue'
+import { ClassDeclaration } from 'parser/ast/ClassDeclarationStatement'
 
-export default class FunctionValue extends Value<IStatement> implements IValue {
-  // public static EMPTY: FunctionValue = new FunctionValue({ execute: () => BooleanValue.FALSE })
+export class UserDefinedFunction implements Function {
+  public scope: Scope
+  private value: ObjectValue
 
-  constructor(value: IStatement, public params: Params = new Params()) {
-    super(value, Types.FUNCTION)
+  constructor(
+    public body: IStatement,
+    public params = new Params(),
+    public id: Identifier | null,
+    public name: string,
+  ) {
+    this.scope = Variables.scope
+
+    const prototype = new ObjectValue(ObjectValue.ObjectPrototype)
+    prototype.set('constructor', new FunctionValue(this))
+
+    this.value = new ObjectValue(FunctionValue.FunctionPrototype)
+    this.value.set('prototype', prototype)
   }
 
-  public execute(...values: IValue[]): IValue {
-    if (this.value instanceof BuiltInFunction) return this.value.execute(...values)
-    this.hoisting()
-    this.setArgs(values)
-    console.log(this.params)
-    console.log(Variables.scope)
-    console.log(this.params.params)
-    this.value.execute()
-    return CallStack.getReturn()
-  }
-
-  public hoisting() {
-    for (const param of this.getParams()) Variables.hoisting(param.getName(), 'var')
-  }
-
-  public getValue(): IStatement {
+  public getValue(): ObjectValue {
     return this.value
   }
 
-  public setArgs(values: IValue[]) {
+  public call(...values: IValue[]): IValue {
+    this.hoisting()
+    this.setArguments(values)
+    this.body.execute()
+    return CallStack.getReturn()
+  }
+
+  private hoisting(): void {
+    for (const param of this.getParams()) param.hoisting('var')
+    this.id && this.id.hoisting('var')
+  }
+
+  private setArguments(values: IValue[]) {
     this.getParams().forEach((arg, i) => arg.define(values[i] ?? UndefinedValue.UNDEFINED))
+    this.id?.define(new FunctionValue(this))
   }
 
-  public getParams() {
-    return this.params.params
+  private getParams() {
+    return this.params.values
   }
 
-  public setScope(scope: Scope) {
-    if (this.value instanceof UserDefinedFunction) {
-      this.value.outer = scope
-    }
+  public toString(): string {
+    return `[function ${this.name}]`
+  }
+}
+
+export class FunctionValue extends Value<Function> implements IValue {
+  static FunctionPrototype = new ObjectValue(ObjectValue.ObjectPrototype, { bind: new NumberValue(123) })
+
+  constructor(public value: Function | ClassDeclaration) {
+    super(value, Types.FUNCTION)
+  }
+
+  public get(key: string) {
+    return this.value.getValue().get(key)
+  }
+
+  public set(key: string, value: IValue) {
+    return this.value.getValue().set(key, value)
   }
 
   public compareTo(o: IValue): number {

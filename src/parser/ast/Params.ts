@@ -3,12 +3,12 @@ import { IAccessible } from './IAccessible'
 import { AssignmentPattern } from './AssignmentPattern'
 
 export class Params implements Iterable<IAccessible> {
-  public params: IAccessible[] = []
+  public values: IAccessible[] = []
   public requiredArgumentsCount = 0
   public hasOptionalParams = false
 
   public add(name: IAccessible, expr: IExpression | null): void {
-    this.params.push(expr ? new AssignmentPattern(name, expr) : name)
+    this.values.push(expr ? new AssignmentPattern(name, expr) : name)
     !expr && ++this.requiredArgumentsCount
 
     if (!expr && this.hasOptionalParams) throw Error('Required argument cannot be after optional')
@@ -16,7 +16,7 @@ export class Params implements Iterable<IAccessible> {
   }
 
   public get(index: number): IAccessible {
-    return this.params[index]
+    return this.values[index]
   }
 
   public getRequiredArgumentsCount(): number {
@@ -24,7 +24,7 @@ export class Params implements Iterable<IAccessible> {
   }
 
   public size(): number {
-    return this.params.length
+    return this.values.length
   }
 
   public iterator(): Iterator<IAccessible> {
@@ -32,14 +32,14 @@ export class Params implements Iterable<IAccessible> {
   }
 
   public [Symbol.iterator](): Iterator<IAccessible> {
-    return this.params[Symbol.iterator]()
+    return this.values[Symbol.iterator]()
   }
 
   public toString(): string {
-    return `(${this.params.join(', ')})`
+    return `(${this.values.join(', ')})`
   }
 
   public toHtml(): string {
-    return `(${this.params.join(', ')})`
+    return `(${this.values.join(', ')})`
   }
 }

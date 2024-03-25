@@ -13,10 +13,8 @@ enum TokenType {
   DO,
   BREAK,
   CONTINUE,
-  DEF,
   FUNCTION,
   RETURN,
-  MATCH,
   CASE,
   CONST,
   LET,
@@ -27,6 +25,10 @@ enum TokenType {
   FALSE,
   UNDEFINED,
   DEBUGGER,
+  NEW,
+  CLASS,
+  CONSTRUCTOR,
+  STATIC,
 
   PLUS, // +
   MINUS, // -
@@ -41,6 +43,7 @@ enum TokenType {
   GT, // >
   GTEQ, // >=
 
+  //compound assignment operators
   PLUSEQ, // +=
   MINUSEQ, // -=
   STAREQ, // *=
@@ -49,7 +52,6 @@ enum TokenType {
   AMPEQ, // &=
   CARETEQ, // ^=
   BAREQ, // |=
-  COLONCOLONEQ, // ::=
   LTLTEQ, // <<=
   GTGTEQ, // >>=
   GTGTGTEQ, // >>>=
@@ -72,7 +74,6 @@ enum TokenType {
   SEMIKOLON, // ;
   QUESTION, // ?
   COLON, // :
-  COLONCOLON, // ::
 
   LPAREN, // (
   RPAREN, // )
@@ -80,8 +81,9 @@ enum TokenType {
   RBRACKET, // ]
   LBRACE, // {
   RBRACE, // }
-  COMMA, // ,
   DOT, // .
+  COMMA, // ,
+  ARROW, // =>
 
   EOF,
 }
