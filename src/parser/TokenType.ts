@@ -27,8 +27,12 @@ enum TokenType {
   DEBUGGER,
   NEW,
   CLASS,
+  EXTENDS,
   CONSTRUCTOR,
+  SUPER,
   STATIC,
+  TYPEOF,
+  DELETE,
 
   PLUS, // +
   MINUS, // -
@@ -37,7 +41,9 @@ enum TokenType {
   PERCENT, // %
   EQ, // =
   EQEQ, // ==
+  EQEQEQ, // ==
   EXCLEQ, // !=
+  EXCLEQEQ, // !=
   LTEQ, // <=
   LT, // <
   GT, // >

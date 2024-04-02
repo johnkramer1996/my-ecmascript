@@ -2,12 +2,37 @@ import Lexer from 'parser/Lexer'
 import Parser from 'parser/Parser'
 
 const program = `
-class A {
-  a() {
-    this.name = 123
-  }
-}
-log new A()`
+log NaN
+log undefined
+
+log Object(123)
+
+`
+// function Name() {
+//   super()
+// }
+// class A {
+//   constructor() {
+//     super()
+//     // console.log(this)
+//   }
+// }
+// class B extends A {
+//   // a = 'b'
+//   // @ts-ignore
+//   constructor() {
+//     super()
+//     // console.log(this)
+//   }
+// }
+// class C extends B {
+//   a = 'c'
+//   constructor() {
+//     // @ts-ignore
+//     // console.log(this)
+//     super()
+//   }
+// }
 
 const lexer = new Lexer(program)
 const tokens = lexer.tokenize()
@@ -19,14 +44,35 @@ try {
   console.error('[main.ts]', e)
 }
 
-class A {
-  a = function () {
-    return { a: 123 }
-  }
-}
+// function myFunc() {
+//   // @ts-ignore
+//   this.a = 10
+// }
+// console.log(myFunc())
 
+// console.log(new Number(123).toString())
+// console.log(Number)
+// // @ts-ignore
+// const A = Name.bind({ aa: 1 })
+// console.log(new A())
+// [Number: 1]
 // @ts-ignore
-new new A().a()
+// console.log(Number.prototype === new Number().__proto__)
+
+// class A {
+//   constructor() {
+//     // @ts-ignore
+//     return function name() {
+//       return { a: 1 }
+//     }
+//   }
+//   a = function () {
+//     return { a: 123 }
+//   }
+// }
+
+// // @ts-ignore
+// console.log(new new A()())
 
 // @ts-ignore
 // const func = (a: number = 10, b: number, c: number = 20) => {

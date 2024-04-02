@@ -8,6 +8,8 @@ import IVisitor from './IVisitor'
 enum ConditionOperator {
   EQUALS = '==',
   NOT_EQUALS = '!=',
+  STRICT_EQUALS = '===',
+  STRICT_NOT_EQUALS = '!==',
   LT = '<',
   LTEQ = '<=',
   GT = '>',
@@ -25,6 +27,9 @@ export default class ConditionalExpression implements IExpression {
     const leftValue = this.left.eval()
     const rightValue = this.right.eval()
 
+    //TODO: IF TYPE === NOT CORVERSION
+    //TODO: ADD BITWISE OPERATORS
+
     const isBoolean = leftValue instanceof BooleanValue || rightValue instanceof BooleanValue
     const isNumber = leftValue instanceof NumberValue || rightValue instanceof NumberValue
     const compareString = isNumber ? 0 : leftValue.asString().localeCompare(rightValue.asString())
@@ -37,6 +42,10 @@ export default class ConditionalExpression implements IExpression {
           return number1 === number2
         case ConditionOperator.NOT_EQUALS:
           return number1 !== number2
+        case ConditionOperator.STRICT_EQUALS:
+          return leftValue.equals(rightValue)
+        case ConditionOperator.STRICT_NOT_EQUALS:
+          return leftValue !== rightValue
         case ConditionOperator.LT:
           return number1 < number2
         case ConditionOperator.LTEQ:

@@ -95,6 +95,7 @@ export default class BinaryExpression implements IExpression {
   }
 }
 
+// TODO: MOVE OUT
 export const binary = [
   {
     name: 'bitwiseOr',
@@ -115,6 +116,14 @@ export const binary = [
       {
         token: TokenType.EXCLEQ,
         class: ConditionalExpression.bind(null, ConditionalExpression.Operator.NOT_EQUALS),
+      },
+      {
+        token: TokenType.EQEQEQ,
+        class: ConditionalExpression.bind(null, ConditionalExpression.Operator.STRICT_EQUALS),
+      },
+      {
+        token: TokenType.EXCLEQEQ,
+        class: ConditionalExpression.bind(null, ConditionalExpression.Operator.STRICT_NOT_EQUALS),
       },
     ],
   },

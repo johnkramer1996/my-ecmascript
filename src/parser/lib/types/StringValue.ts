@@ -6,7 +6,7 @@ export default class StringValue extends Value<string> {
   static EMPTY = new StringValue('')
 
   constructor(value: string) {
-    super(value, Types.STRING)
+    super(value, Types.string)
   }
 
   public length(): number {

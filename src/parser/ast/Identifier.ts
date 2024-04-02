@@ -8,10 +8,6 @@ export class Identifier implements IExpression, IAccessible {
   constructor(public name: string) {}
 
   public eval(): IValue {
-    return this.get()
-  }
-
-  public get(): IValue {
     return Variables.get(this.name)
   }
 

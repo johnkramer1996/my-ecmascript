@@ -25,6 +25,8 @@ export default class Lexer implements ILexer {
     ['>', TokenType.GT],
     ['==', TokenType.EQEQ],
     ['!=', TokenType.EXCLEQ],
+    ['===', TokenType.EQEQEQ],
+    ['!==', TokenType.EXCLEQEQ],
     ['<=', TokenType.LTEQ],
     ['>=', TokenType.GTEQ],
 
@@ -69,9 +71,16 @@ export default class Lexer implements ILexer {
     ['return', TokenType.RETURN],
     ['new', TokenType.NEW],
     ['class', TokenType.CLASS],
+    ['extends', TokenType.EXTENDS],
     ['constructor', TokenType.CONSTRUCTOR],
+    ['super', TokenType.SUPER],
     ['this', TokenType.THIS],
     ['static', TokenType.STATIC],
+    ['true', TokenType.TRUE],
+    ['false', TokenType.FALSE],
+    ['typeof', TokenType.TYPEOF],
+    ['delete', TokenType.DELETE],
+    ['null', TokenType.NULL],
   ])
 
   private tokens: IToken[] = []

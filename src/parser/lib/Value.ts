@@ -1,10 +1,20 @@
 import IStatement from 'parser/ast/IStatement'
 import IValue from './IValue'
 import Types from './types/Types'
-import ObjectValue from './types/ObjectValue'
+import { ObjectValue } from './types/ObjectValue'
 
 export default abstract class Value<
-  T extends string | number | boolean | undefined | IValue[] | Object | Function | IStatement | ObjectValue = any,
+  T extends
+    | string
+    | number
+    | boolean
+    | undefined
+    | null
+    | IValue[]
+    | Object
+    | Function
+    | IStatement
+    | ObjectValue = any,
 > implements IValue
 {
   constructor(protected value: T, protected typeValue: Types) {}
@@ -12,8 +22,8 @@ export default abstract class Value<
   public abstract equals(value: IValue): boolean
   public abstract compareTo(o: IValue): number
 
-  public type(): Types {
-    return this.typeValue
+  public type(): string {
+    return Types[this.typeValue]
   }
 
   public raw(): T {

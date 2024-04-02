@@ -7,7 +7,7 @@ export default class BooleanValue extends Value<boolean> {
   public static FALSE = new BooleanValue(false)
 
   constructor(value: boolean) {
-    super(value, Types.BOOLEAN)
+    super(value, Types.boolean)
   }
 
   public compareTo(o: IValue): number {

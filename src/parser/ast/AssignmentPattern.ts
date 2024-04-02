@@ -13,7 +13,7 @@ export class AssignmentPattern implements IExpression, IAccessible {
   }
 
   public get(): IValue {
-    return this.identifier.get()
+    return this.identifier.eval()
   }
 
   public set(value: IValue): IValue {
@@ -27,10 +27,6 @@ export class AssignmentPattern implements IExpression, IAccessible {
   public hoisting(kind: string): void {
     this.identifier.hoisting(kind)
   }
-
-  // public getName(): string {
-  //   return this.identifier.getName()
-  // }
 
   public getValueExpr(): IExpression {
     return this.valueExpr

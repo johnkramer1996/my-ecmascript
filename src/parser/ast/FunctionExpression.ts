@@ -8,13 +8,13 @@ import { Identifier } from './Identifier'
 export default class FunctionExpression implements IExpression {
   constructor(
     public id: Identifier | null = null,
-    public name: string,
+    public name: Identifier | null = null,
     public params: Params,
     public body: IStatement,
   ) {}
 
   public eval(): FunctionValue {
-    return new FunctionValue(new UserDefinedFunction(this.body, this.params, this.id, this.name))
+    return new FunctionValue(new UserDefinedFunction(this.body, this.params, this.id, this.name?.toString() ?? ''))
   }
 
   public accept(visitor: IVisitor): void {

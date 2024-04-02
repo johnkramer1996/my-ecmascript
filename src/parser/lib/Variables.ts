@@ -3,13 +3,17 @@ import IValue from './IValue'
 import IVisitor from 'parser/ast/IVisitor'
 import Function from './Function'
 import UndefinedValue from './types/UndefinedValue'
-import ObjectValue from './types/ObjectValue'
+import { ObjectValue } from './types/ObjectValue'
 import { FunctionValue } from './types/FunctionValue'
 import ArrayValue from './types/ArrayValue'
 import StringValue from './types/StringValue'
 import Types from './types/Types'
 import Lexer from 'parser/Lexer'
 import Parser from 'parser/Parser'
+import NumberValue from './types/NumberValue'
+import { initFundamentalObjects } from './fundamental-objects/NativeFunction'
+import { Identifier } from 'parser/ast/Identifier'
+import { ClassDeclaration } from 'parser/ast/ClassDeclarationStatement'
 
 const uninitialized = '<uninitialized>'
 
@@ -29,64 +33,41 @@ const uninitialized = '<uninitialized>'
 
 // };
 
-type Variable = { value: IValue | Function | typeof uninitialized; kind: string }
+type Variable = { value: IValue | typeof uninitialized; kind: string }
 
 export class Scope<T extends This = This> {
   public variables: Map<String, Variable> = new Map()
 
-  constructor(public parent: Scope<T> | null = null, public this_: T) {}
+  constructor(
+    public callee: Function | null = null,
+    public parent: Scope<T> | null = null,
+    public calleeParent: Scope<T> | null = null,
+    public this_: T,
+  ) {}
 }
 
 type GlobalThis = ObjectValue
-type This = GlobalThis | ArrayValue | UndefinedValue
+export type This = GlobalThis | ArrayValue | UndefinedValue
 
 export class Variables {
   public static globalScope: Scope<GlobalThis>
   public static scope: Scope<This>
 
-  public static init(this_: ObjectValue) {
-    this.globalScope = this.scope = new Scope(null, this_)
+  public static init() {
+    const globalObject = new ObjectValue()
+    globalObject.set('window', globalObject)
+    globalObject.set('globalThis', globalObject)
+    globalObject.set('NaN', NumberValue.NaN)
+    globalObject.set('undefined', UndefinedValue.UNDEFINED)
 
-    const _FunctionValue = new ObjectValue(FunctionValue.FunctionPrototype)
-
-    const _Function = new FunctionValue({
-      call(string: IValue) {
-        const lexer = new Lexer(string.asString())
-        const tokens = lexer.tokenize()
-        const parser = new Parser(tokens)
-        const ast = parser.parseFunction()
-
-        return new FunctionValue({
-          call: () => {
-            try {
-              Variables.enterScope(Variables.globalScope)
-              ast.execute()
-              Variables.exitScope()
-            } catch (e) {
-              console.error(e)
-            }
-
-            return UndefinedValue.UNDEFINED
-          },
-          getValue() {
-            return new ObjectValue()
-          },
-        })
-      },
-      getValue() {
-        return _FunctionValue
-      },
-      toString() {
-        return 'Functoin'
-      },
-    })
+    this.globalScope = this.scope = new Scope(null, null, null, globalObject)
 
     ObjectValue.ObjectPrototype.set(
       'toString',
       new FunctionValue({
         call(...args) {
           const _this = Variables.get('this')
-          return new StringValue(`[${Types[_this.type()]} object]`)
+          return new StringValue(`[${_this.type()} object]`)
         },
         getValue() {
           return new ObjectValue()
@@ -94,9 +75,13 @@ export class Variables {
       }),
     )
 
-    _FunctionValue.set('prototype', FunctionValue.FunctionPrototype)
-    _FunctionValue.set('constructor', _Function)
-    Variables.hoisting('Function', 'func', _Function)
+    const { Object_, Function_, Number_, String_, Boolean_ } = initFundamentalObjects()
+
+    Variables.hoisting('Object', 'func', Object_)
+    Variables.hoisting('Function', 'func', Function_)
+    Variables.hoisting('Number', 'func', Number_)
+    Variables.hoisting('String', 'func', String_)
+    Variables.hoisting('Boolean', 'func', Boolean_)
   }
 
   public static bindThis(value: This): void {
@@ -107,13 +92,17 @@ export class Variables {
     return this.scope.this_
   }
 
-  public static enterScope(parent?: Scope): void {
-    this.scope = new Scope(parent ?? this.scope, UndefinedValue.UNDEFINED)
+  public static getScope(): Scope {
+    return this.scope
+  }
+
+  public static enterScope(callee?: Function, parent?: Scope): void {
+    this.scope = new Scope(callee, parent ?? this.scope, this.scope, UndefinedValue.UNDEFINED)
   }
 
   public static exitScope(): Scope {
     const scope = this.scope
-    if (this.scope.parent) this.scope = this.scope.parent
+    if (this.scope.calleeParent) this.scope = this.scope.calleeParent
     return scope
   }
 
@@ -124,9 +113,8 @@ export class Variables {
   public static get(key: string): IValue {
     const scopeData = this.lookUp(key)
     if (!scopeData) {
-      const this_ = this.globalScope.this_
-      const value = this_.get(key)
-      if (!(value === UndefinedValue.UNDEFINED)) return value
+      const value = this.globalScope.this_.get(key)
+      if (!(value === UndefinedValue.UNDEFINED && key !== 'undefined')) return value
       throw new ReferenceError(`${key} is not defined`)
     }
     const variable = scopeData.variables.get(key)
@@ -142,7 +130,6 @@ export class Variables {
     if (!variable) throw new ReferenceError('Varaible undefined ' + key)
     if (variable.kind === 'const') throw new SyntaxError(`Cannot assign to '${key}' because it is a constant.`)
     variable.value = value
-    // if (value instanceof FunctionValue) value.setScope(new Scope(Variables.scope))
     return value
   }
 
@@ -176,13 +163,3 @@ export class Variables {
     return null
   }
 }
-
-// export class BuiltInFunction implements IStatement {
-//   constructor(public callback: Function) {}
-
-//   execute(...values: IValue[]): IValue {
-//     return this.callback.execute(...values)
-//   }
-
-//   accept(visitor: IVisitor): void {}
-// }

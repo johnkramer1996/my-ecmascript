@@ -5,12 +5,11 @@ import TypeException from 'exceptions/TypeException'
 import IValue from '../IValue'
 import { Scope, Variables } from '../Variables'
 import UndefinedValue from './UndefinedValue'
-import CallStack from '../CallStack'
+import ECStack from '../CallStack'
 import { Params } from 'parser/ast/Params'
 import { Identifier } from 'parser/ast/Identifier'
-import ObjectValue, { MyObject } from './ObjectValue'
+import { MyObject, ObjectValue } from './ObjectValue'
 import Function from '../Function'
-import NumberValue from './NumberValue'
 import { ClassDeclaration } from 'parser/ast/ClassDeclarationStatement'
 
 export class UserDefinedFunction implements Function {
@@ -28,7 +27,7 @@ export class UserDefinedFunction implements Function {
     const prototype = new ObjectValue(ObjectValue.ObjectPrototype)
     prototype.set('constructor', new FunctionValue(this))
 
-    this.value = new ObjectValue(FunctionValue.FunctionPrototype)
+    this.value = new ObjectValue(ObjectValue.FunctionPrototype)
     this.value.set('prototype', prototype)
   }
 
@@ -40,7 +39,7 @@ export class UserDefinedFunction implements Function {
     this.hoisting()
     this.setArguments(values)
     this.body.execute()
-    return CallStack.getReturn()
+    return ECStack.getReturn()
   }
 
   private hoisting(): void {
@@ -63,10 +62,8 @@ export class UserDefinedFunction implements Function {
 }
 
 export class FunctionValue extends Value<Function> implements IValue {
-  static FunctionPrototype = new ObjectValue(ObjectValue.ObjectPrototype, { bind: new NumberValue(123) })
-
-  constructor(public value: Function | ClassDeclaration) {
-    super(value, Types.FUNCTION)
+  constructor(public value: Function) {
+    super(value, Types.function)
   }
 
   public get(key: string) {

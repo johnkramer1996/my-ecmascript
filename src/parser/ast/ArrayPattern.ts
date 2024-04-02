@@ -10,10 +10,6 @@ export class ArrayPattern implements IExpression, IAccessible, Iterable<IAccessi
   constructor(public elements: IAccessible[]) {}
 
   public eval(): IValue {
-    return this.get()
-  }
-
-  public get(): IValue {
     return Variables.get(this.getName())
   }
 

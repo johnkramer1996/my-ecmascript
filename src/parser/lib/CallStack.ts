@@ -10,7 +10,7 @@ export class CallInfo {
   }
 }
 
-export default class CallStack {
+export default class ECStack {
   private static calls: CallInfo[] = []
   private static return: IValue = UndefinedValue.UNDEFINED
 

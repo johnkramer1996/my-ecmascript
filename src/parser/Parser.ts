@@ -24,9 +24,16 @@ import { Params } from './ast/Params'
 import { CallExpression, NewExpression } from './ast/CallExpression'
 import FunctionExpression from './ast/FunctionExpression'
 import ReturnStatement from './ast/ReturnStatement'
-import { ClassDeclarationStatement, MethodDefinition, PropertyDefinition } from './ast/ClassDeclarationStatement'
+import {
+  ClassDeclarationStatement,
+  KindMethod,
+  MethodDefinition,
+  PropertyDefinition,
+  Super,
+} from './ast/ClassDeclarationStatement'
 import MemberExpression from './ast/MemberExpression'
 import { ThisExpression } from './ast/ThisExpression'
+import UnaryExpression from './ast/UnaryExpression'
 //! LOCATION
 
 export default class Parser {
@@ -152,7 +159,7 @@ export default class Parser {
     this.match(TokenType.CONST) || this.match(TokenType.LET) || this.match(TokenType.VAR)
     const declarations: VariableDeclarator[] = []
     do {
-      const identifier = this.identifier()
+      const identifier = this.identifierOrArrayPattern()
 
       if (this.match(TokenType.EQ)) {
         declarations.push(new VariableDeclarator(identifier, this.expression()))
@@ -168,21 +175,23 @@ export default class Parser {
 
   private classDeclaration(): IStatement {
     const id = new Identifier(this.consume(TokenType.WORD).getText())
-    const classDeclaration = new ClassDeclarationStatement(id)
+    const hasExt = this.match(TokenType.EXTENDS)
+    const extends_ = hasExt ? new Identifier(this.consume(TokenType.WORD).getText()) : null
+    const classDeclaration = new ClassDeclarationStatement(id, extends_)
     this.consume(TokenType.LBRACE)
     while (!this.match(TokenType.RBRACE)) {
       const static_ = this.match(TokenType.STATIC)
-      const current = this.get()
-      if (this.match(TokenType.WORD)) {
+      if (this.lookMatch(0, TokenType.WORD)) {
+        const id = this.identifier()
         if (this.lookMatch(0, TokenType.LPAREN)) {
-          classDeclaration.addMethod(this.methodDefinition(current.getText(), static_))
+          classDeclaration.addMethod(this.methodDefinition(id, static_))
           continue
         }
-        classDeclaration.addField(this.propertyDefinition(current.getText(), static_))
+        classDeclaration.addField(this.propertyDefinition(id, static_))
         continue
       }
       if (this.match(TokenType.CONSTRUCTOR)) {
-        classDeclaration.addMethod(this.methodDefinition(current.getText()))
+        classDeclaration.addMethod(this.methodDefinition(new Identifier('constructor'), false, 'constructor'))
         continue
       }
     }
@@ -190,11 +199,11 @@ export default class Parser {
     return classDeclaration
   }
 
-  private methodDefinition(name: string, static_ = false): MethodDefinition {
-    return new MethodDefinition(name, this.functionExpression(name), static_)
+  private methodDefinition(name: Identifier, static_ = false, type?: KindMethod): MethodDefinition {
+    return new MethodDefinition(name, this.functionExpression(name), static_, type)
   }
 
-  private propertyDefinition(key: string, static_ = false): PropertyDefinition {
+  private propertyDefinition(key: Identifier, static_ = false): PropertyDefinition {
     const value = this.match(TokenType.EQ) ? this.expression() : null
     return new PropertyDefinition(key, value, static_)
   }
@@ -231,14 +240,14 @@ export default class Parser {
     return new FunctionDeclarationStatement(name, this.params(), this.block())
   }
 
-  private functionExpression(name = ''): FunctionExpression {
+  private functionExpression(name: Identifier | null = null): FunctionExpression {
     const id = this.lookMatch(0, TokenType.WORD) ? new Identifier(this.consume(TokenType.WORD).getText()) : null
 
     return new FunctionExpression(id, name, this.params(), this.block())
   }
 
   private arrowFunctionExpression(): IExpression {
-    const name = this.lookMatch(-2, TokenType.WORD) ? this.get(-2).getText() : ''
+    const name = this.lookMatch(-2, TokenType.WORD) ? new Identifier(this.get(-2).getText()) : null
     const params = this.params()
     this.consume(TokenType.ARROW)
     const body = this.body()
@@ -246,7 +255,7 @@ export default class Parser {
     return new FunctionExpression(null, name, params, body)
   }
 
-  private array(): IExpression {
+  private arrayLiteral(): IExpression {
     let index = 1
 
     let type = this.get(index).getType()
@@ -264,7 +273,7 @@ export default class Parser {
 
     const arrayPattern = this.arrayPattern()
     this.consume(TokenType.EQ)
-    const arrayExprestion = this.array()
+    const arrayExprestion = this.arrayLiteral()
     return new AssignmentExpression(AssignmentOperator.ASSIGNMENT, arrayPattern, arrayExprestion)
   }
 
@@ -272,7 +281,7 @@ export default class Parser {
     this.consume(TokenType.LBRACKET)
     const items: IAccessible[] = []
     while (!this.match(TokenType.RBRACKET)) {
-      const name = this.identifier()
+      const name = this.identifierOrArrayPattern()
       const expr = this.match(TokenType.EQ) ? this.expression() : null
       items.push(expr ? new AssignmentPattern(name, expr) : name)
       this.match(TokenType.COMMA)
@@ -280,9 +289,13 @@ export default class Parser {
     return new ArrayPattern(items)
   }
 
-  private identifier(): IAccessible {
+  private identifierOrArrayPattern(): IAccessible {
     if (this.lookMatch(0, TokenType.WORD)) return new Identifier(this.consume(TokenType.WORD).getText())
     return this.arrayPattern()
+  }
+
+  private identifier(): Identifier {
+    return new Identifier(this.consume(TokenType.WORD).getText())
   }
 
   private arrayExprestion(): IExpression {
@@ -299,16 +312,18 @@ export default class Parser {
     return new ArrayExpression(elements)
   }
 
-  private object(): IExpression {
+  private objectLiteral(): IExpression {
     this.consume(TokenType.LBRACE)
-    const elements: Map<string, IExpression> = new Map()
+    const elements: Map<IAccessible, IExpression> = new Map()
     while (!this.match(TokenType.RBRACE)) {
-      const current = this.literal()
+      const key = this.property()
+
       if (this.lookMatch(0, TokenType.LPAREN)) {
-        elements.set(current.get().asString(), this.functionExpression(current.get().asString()))
+        const name = key instanceof Identifier ? key : null
+        elements.set(key, this.functionExpression(name))
       } else {
         this.consume(TokenType.COLON)
-        elements.set(current.get().asString(), this.expression())
+        elements.set(key, this.expression())
       }
 
       this.lookMatch(0, TokenType.RBRACE) ? null : this.consume(TokenType.COMMA)
@@ -338,16 +353,15 @@ export default class Parser {
   }
 
   private objectCreation(): IExpression {
-    if (this.match(TokenType.NEW)) {
-      //TODO: repeat new => new new A
-      // if (this.lookMatch(0, TokenType.NEW))
-      // this.maybeCallOrMember(this.newExpression(this.maybeMember(this.objectCreation())))
-      const word = this.consume(TokenType.WORD)
-
-      return this.maybeCallOrMember(this.newExpression(this.maybeMember(new Identifier(word.getText()))))
-    }
+    if (this.match(TokenType.NEW)) return this.maybeCallOrMember(this.maybeNewInARow())
 
     return this.unary()
+  }
+
+  private maybeNewInARow(): NewExpression {
+    if (this.match(TokenType.NEW)) return this.newExpression(this.maybeCallOrMember(this.maybeNewInARow(), false))
+    const word = this.consume(TokenType.WORD)
+    return this.newExpression(this.maybeCallOrMember(new Identifier(word.getText()), false))
   }
 
   private newExpression(id: IExpression): NewExpression {
@@ -370,38 +384,59 @@ export default class Parser {
     if (this.match(TokenType.MINUSMINUS))
       return new UpdateExpression(UpdateExpression.Operator.DECREMENT, this.leftValue())
 
-    return this.primary()
+    if (this.match(TokenType.DELETE)) return new UnaryExpression(UnaryExpression.Operator.DELETE, this.leftValue())
+    if (this.match(TokenType.MINUS))
+      return new UnaryExpression(UnaryExpression.Operator.NEGATION, this.primaryExpression())
+    if (this.match(TokenType.EXCL))
+      return new UnaryExpression(UnaryExpression.Operator.LOGICAL_NOT, this.primaryExpression())
+    if (this.match(TokenType.TILDE))
+      return new UnaryExpression(UnaryExpression.Operator.BITWISE_NOT, this.primaryExpression())
+    if (this.match(TokenType.PLUS)) return new UnaryExpression(UnaryExpression.Operator.PLUS, this.primaryExpression())
+    if (this.match(TokenType.TYPEOF))
+      return new UnaryExpression(UnaryExpression.Operator.TYPEOF, this.primaryExpression())
+
+    return this.primaryExpression()
   }
 
-  private primary(): IExpression {
-    // if (this.match(TokenType.COLONCOLON)) return new FunctionReferenceExpression(this.consume(TokenType.WORD).getText())
-    // if (this.match(TokenType.MATCH)) return this.matchExpression()
-    if (this.lookMatch(0, TokenType.LPAREN)) return this.nested()
+  private primaryExpression(): IExpression {
+    if (this.lookMatch(0, TokenType.WORD) || this.lookMatch(0, TokenType.THIS)) {
+      const leftOrRightValue = this.leftOrRightValue()
+      if (leftOrRightValue instanceof CallExpression) return leftOrRightValue
+      if (leftOrRightValue instanceof ThisExpression) return leftOrRightValue
+
+      if (this.match(TokenType.PLUSPLUS))
+        return new UpdateExpression(UpdateExpression.Operator.INCREMENT, leftOrRightValue, false)
+      if (this.match(TokenType.MINUSMINUS))
+        return new UpdateExpression(UpdateExpression.Operator.DECREMENT, leftOrRightValue, false)
+      return leftOrRightValue
+    }
+
+    if (this.lookMatch(0, TokenType.LBRACKET)) return this.arrayLiteral()
+    if (this.lookMatch(0, TokenType.LBRACE)) return this.objectLiteral()
+
+    if (this.lookMatch(0, TokenType.LPAREN)) {
+      let i = 1
+      while (!this.lookMatch(i++, TokenType.RPAREN));
+      const isArrowFunction = this.lookMatch(i, TokenType.ARROW)
+      return isArrowFunction ? this.arrowFunctionExpression() : this.nested()
+    }
+    if (this.match(TokenType.FUNCTION)) return this.functionExpression()
 
     return this.variable()
   }
 
   private variable(): IExpression {
-    if (this.lookMatch(0, TokenType.WORD) || this.lookMatch(0, TokenType.THIS)) {
-      const qualifiedName = this.leftOrRightValue()
-      if (qualifiedName instanceof CallExpression) return qualifiedName
-      if (qualifiedName instanceof ThisExpression) return qualifiedName
+    if (this.match(TokenType.SUPER)) return this.callExpression(new Super())
 
-      if (this.match(TokenType.PLUSPLUS))
-        return new UpdateExpression(UpdateExpression.Operator.INCREMENT, qualifiedName, false)
-      if (this.match(TokenType.MINUSMINUS))
-        return new UpdateExpression(UpdateExpression.Operator.DECREMENT, qualifiedName, false)
-      return qualifiedName
-    }
-    return this.value()
+    return this.literal()
   }
 
-  private value(): IExpression {
-    if (this.lookMatch(0, TokenType.LBRACKET)) return this.array()
-    if (this.lookMatch(0, TokenType.LBRACE)) return this.object()
+  private property(): IAccessible {
+    const current = this.get()
 
-    if (this.lookMatch(0, TokenType.LPAREN)) return this.arrowFunctionExpression()
-    if (this.match(TokenType.FUNCTION)) return this.functionExpression()
+    if (this.match(TokenType.WORD)) return new Identifier(current.getText()) // for property object {'a': 123} => {a: 123}
+    if (this.match(TokenType.TRUE)) return new Identifier(current.getText())
+    if (this.match(TokenType.FALSE)) return new Identifier(current.getText())
 
     return this.literal()
   }
@@ -409,11 +444,30 @@ export default class Parser {
   private literal(): IAccessible {
     const current = this.get()
 
-    if (this.match(TokenType.NUMBER)) return new Literal(current.getText(), current.getRaw())
-    if (this.match(TokenType.TEXT)) return new Literal(current.getText(), current.getRaw())
-    if (this.match(TokenType.WORD)) return new Literal(current.getText(), current.getRaw()) // for property object {'a': 123} => {a: 123}
+    if (this.match(TokenType.NULL)) return this.nullLiteral(current.getText(), current.getRaw())
+    if (this.match(TokenType.TRUE) || this.match(TokenType.FALSE))
+      return this.booleanLiteral(current.getText(), current.getRaw())
+    if (this.match(TokenType.TEXT)) return this.stringLiteral(current.getText(), current.getRaw())
+    if (this.match(TokenType.NUMBER)) return this.numbericLiteral(current.getText(), current.getRaw())
+    // if (this.match(TokenType.WORD)) return new Literal(current.getText(), current.getRaw())
 
     throw this.error('Expression expected instead get ' + current)
+  }
+
+  private nullLiteral(value: string, raw: string): IAccessible {
+    return new Literal(value, raw)
+  }
+
+  private booleanLiteral(value: string, raw: string): IAccessible {
+    return new Literal(value === 'true', raw)
+  }
+
+  private numbericLiteral(value: string, raw: string): IAccessible {
+    return new Literal(Number(value), raw)
+  }
+
+  private stringLiteral(value: string, raw: string): IAccessible {
+    return new Literal(value, raw)
   }
 
   private nested(): IExpression {
@@ -448,19 +502,14 @@ export default class Parser {
 
   private maybeCallOrMember(
     id: IAccessible | CallExpression | ThisExpression,
+    maybeCall = true,
   ): IAccessible | CallExpression | ThisExpression {
-    if (this.lookMatch(0, TokenType.LPAREN)) return this.maybeCallOrMember(this.callExpression(id))
-    const result = this.maybeMember(id)
-    return result === id ? result : this.maybeCallOrMember(result)
-  }
+    if (maybeCall && this.lookMatch(0, TokenType.LPAREN)) return this.maybeCallOrMember(this.callExpression(id))
 
-  private maybeMember(
-    id: IAccessible | CallExpression | ThisExpression,
-  ): IAccessible | CallExpression | ThisExpression {
     const isOptional = this.lookMatch(0, TokenType.QUESTION) ? 1 : 0
     const isDotOrBracketNotation =
       this.lookMatch(isOptional, TokenType.LBRACKET) || this.lookMatch(isOptional, TokenType.DOT)
-    if (isDotOrBracketNotation) return this.memberExpression(id)
+    if (isDotOrBracketNotation) return this.maybeCallOrMember(this.memberExpression(id), maybeCall)
 
     return id
   }
@@ -468,7 +517,6 @@ export default class Parser {
   private memberExpression(
     id: IAccessible | CallExpression | ThisExpression,
   ): IAccessible | CallExpression | ThisExpression {
-    // TODO: isOptional
     const isOptional = this.match(TokenType.QUESTION)
 
     if (this.match(TokenType.DOT)) {
@@ -483,10 +531,10 @@ export default class Parser {
       this.consume(TokenType.RBRACKET)
       return new MemberExpression(id, property, true, !!isOptional)
     }
-    throw new Error('property expect')
+    throw this.error('property expect instead get ' + this.getName())
   }
 
-  private callExpression(qualifiedName: IExpression): IAccessible | CallExpression | ThisExpression {
+  private callExpression(qualifiedName: IExpression): CallExpression {
     this.consume(TokenType.LPAREN)
     const args: IExpression[] = []
     while (!this.match(TokenType.RPAREN)) {
@@ -497,15 +545,14 @@ export default class Parser {
       }
     }
 
-    const call = new CallExpression(qualifiedName, args)
-    return this.maybeCallOrMember(call)
+    return new CallExpression(qualifiedName, args)
   }
 
   private params(): Params {
     this.consume(TokenType.LPAREN)
     const paramsNames = new Params()
     while (!this.match(TokenType.RPAREN)) {
-      const value = this.identifier()
+      const value = this.identifierOrArrayPattern()
       paramsNames.add(value, this.match(TokenType.EQ) ? this.expression() : null)
       this.match(TokenType.COMMA)
     }

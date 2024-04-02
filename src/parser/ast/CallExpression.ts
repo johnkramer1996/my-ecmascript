@@ -2,12 +2,13 @@ import IValue from 'parser/lib/IValue'
 import IExpression from './IExpression'
 import IVisitor from './IVisitor'
 import { FunctionValue } from 'parser/lib/types/FunctionValue'
-import CallStack from 'parser/lib/CallStack'
+import ECStack from 'parser/lib/CallStack'
 import MemberExpression from './MemberExpression'
-import { Variables } from 'parser/lib/Variables'
+import { This, Variables } from 'parser/lib/Variables'
 import UndefinedValue from 'parser/lib/types/UndefinedValue'
-import ObjectValue from 'parser/lib/types/ObjectValue'
+import { ClassInstance, ObjectValue } from 'parser/lib/types/ObjectValue'
 import ArrayValue from 'parser/lib/types/ArrayValue'
+import { ClassDeclaration, Super } from './ClassDeclarationStatement'
 
 // function execution context.
 // this.createFEC()
@@ -19,18 +20,36 @@ export class CallExpression implements IExpression {
 
   public eval(): IValue {
     const value = this.callee.eval()
-    if (!(value instanceof FunctionValue)) throw new Error('expect function ' + value)
+    const args = this.args.map((v) => v.eval())
+
+    const this_ =
+      this.callee instanceof MemberExpression
+        ? this.callee.getThis()
+        : this.callee instanceof Super
+        ? Variables.getThis()
+        : UndefinedValue.UNDEFINED
+
+    return CallExpression.eval(value, args, this_, this.callee instanceof Super)
+  }
+
+  static eval(value: IValue, args: IValue[], this_: This, super_ = false): IValue {
+    if (!(value instanceof FunctionValue)) throw new Error('expect function instead get1 ' + value)
 
     const func = value.raw()
-    const _this = this.callee instanceof MemberExpression ? this.callee.getThis() : UndefinedValue.UNDEFINED
 
-    CallStack.enter('call')
-    Variables.enterScope()
-    Variables.bindThis(_this)
-    const values = this.args.map((v) => v.eval())
-    const result = func.call(...values)
+    ECStack.enter('call')
+    Variables.enterScope(func, func.scope)
+    Variables.bindThis(this_)
+    const result = func.call(...args)
     Variables.exitScope()
-    CallStack.exit()
+    ECStack.exit()
+
+    if (super_) {
+      const value = Variables.getScope().callee
+      if (value instanceof ClassDeclaration) {
+        value.initValue()
+      }
+    }
 
     return result
   }
@@ -49,21 +68,21 @@ export class NewExpression implements IExpression {
 
   public eval(): IValue {
     const value = this.callee.eval()
-    if (!(value instanceof FunctionValue)) throw new Error('expect function ' + value)
+    if (!(value instanceof FunctionValue)) throw new Error('expect function instead get2 ' + value)
 
     const func = value.raw()
-    const _this = new ObjectValue(func.getValue().get('prototype'))
+    const this_ = new ClassInstance(func.getValue().get('prototype'), undefined, func.name ?? '')
 
-    CallStack.enter('new')
-    Variables.enterScope()
-    Variables.bindThis(_this)
+    ECStack.enter('new')
+    Variables.enterScope(func, func.scope)
+    Variables.bindThis(this_)
     const values = this.args.map((v) => v.eval())
     const result = func.call(...values) // this === 0
     Variables.exitScope()
-    CallStack.exit()
-    const res = result instanceof ObjectValue || result instanceof ArrayValue ? result : _this
+    ECStack.exit()
 
-    return res
+    const isObject = result instanceof ObjectValue || result instanceof ArrayValue || result instanceof FunctionValue
+    return isObject ? result : this_
   }
 
   public accept(visitor: IVisitor): void {

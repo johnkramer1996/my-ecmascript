@@ -41,10 +41,11 @@ export default class AssignmentExpression implements IExpression {
     const result = this.expression.eval()
     const binary = AssignmentExpression.binaryOperator.get(this.operator)
     const value = binary
-      ? new BinaryExpression(binary, new Literal(this.target.get()), new Literal(result)).eval()
+      ? new BinaryExpression(binary, new Literal(this.target.eval()), new Literal(result)).eval()
       : result
 
-    return this.target.set(value)
+    const rs = this.target.set(value)
+    return rs
   }
 
   public accept(visitor: IVisitor): void {

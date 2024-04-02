@@ -5,15 +5,22 @@ import UndefinedValue from './UndefinedValue'
 import NumberValue from './NumberValue'
 import Types from './Types'
 import StringValue from './StringValue'
+import BooleanValue from './BooleanValue'
+import { FunctionValue } from './FunctionValue'
+import { Variables } from '../Variables'
 
 export type MyObject = { [index: string]: IValue }
 
-export default class ObjectValue extends Value<MyObject> implements Iterable<[string, IValue]> {
+export class ObjectValue extends Value<MyObject> implements Iterable<[string, IValue]> {
   static ObjectPrototype = new ObjectValue(null)
+  static FunctionPrototype = new ObjectValue(ObjectValue.ObjectPrototype, { bind: new NumberValue(123) })
+  static NumberPrototype = new ObjectValue()
+  static StringPrototype = new ObjectValue()
+  static BooleanPrototype = new ObjectValue()
   private __proto__: ObjectValue | null = null
 
   constructor(__proto__: IValue | null = ObjectValue.ObjectPrototype, value: MyObject = {}) {
-    super(value, Types.OBJECT)
+    super(value, Types.object)
     if (__proto__ instanceof ObjectValue) this.__proto__ = __proto__
   }
 
@@ -32,13 +39,17 @@ export default class ObjectValue extends Value<MyObject> implements Iterable<[st
     return this.value.hasOwnProperty(key)
   }
 
-  public set(key: string, value: IValue): void {
-    if (key === '__proto__') {
+  public set(property: string, value: IValue): void {
+    if (property === '__proto__') {
       if (!(value instanceof ObjectValue)) return
       this.__proto__ = value
       return
     }
-    this.value[key] = value
+    this.value[property] = value
+  }
+
+  public delete(property: string): boolean {
+    return delete this.value[property]
   }
 
   public compareTo(o: IValue): number {
@@ -83,5 +94,45 @@ export default class ObjectValue extends Value<MyObject> implements Iterable<[st
       })
       .join(', ')
     return `{${entries}}`
+  }
+}
+
+export class ClassInstance extends ObjectValue {
+  private active = false
+
+  constructor(__proto__: IValue | null = ObjectValue.ObjectPrototype, value: MyObject = {}, private className: string) {
+    super(__proto__, value)
+  }
+
+  hasAccess() {
+    if (!this.active) {
+      throw new Error(
+        "Must call super constructor in derived class before accessing 'this' or returning from derived constructor",
+      )
+    }
+  }
+
+  activate() {
+    this.active = true
+  }
+
+  public get(property: string): IValue {
+    this.hasAccess()
+    return super.get(property)
+  }
+
+  public set(property: string, value: IValue): void {
+    this.hasAccess()
+    return super.set(property, value)
+  }
+
+  public delete(property: string): boolean {
+    this.hasAccess()
+    return super.delete(property)
+  }
+
+  public asString() {
+    this.hasAccess()
+    return `${this.className} ${super.asString()}`
   }
 }

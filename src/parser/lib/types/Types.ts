@@ -1,11 +1,13 @@
 enum Types {
-  OBJECT = 0,
-  NUMBER = 1,
-  STRING = 2,
-  ARRAY = 3,
+  object = 0,
+  number = 1,
+  string = 2,
+  array = 3,
   MAP = 4,
-  FUNCTION = 5,
-  BOOLEAN = 6,
+  function = 5,
+  boolean = 6,
+  null = 7,
+  undefined = 8,
 }
 
 export default Types

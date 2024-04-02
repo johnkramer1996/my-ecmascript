@@ -2,26 +2,29 @@ import IValue from '../IValue'
 import Types from './Types'
 import Value from '../Value'
 
-export default class NumberValue extends Value<number> {
-  static NaN = new NumberValue(NaN)
+export default class NullValue extends Value {
+  public static NULL = new NullValue()
 
-  constructor(value: number) {
-    super(value, Types.number)
+  constructor() {
+    super(null, Types.null)
   }
 
   public compareTo(o: IValue): number {
-    if (o instanceof NumberValue) return this.value >= o.value ? this.value - o.value : o.value - this.value
     return this.asString().localeCompare(o.asString())
   }
 
   public equals(value: IValue): boolean {
     if (this === value) return true
-    if (!(value instanceof NumberValue)) return false
+    if (!(value instanceof NullValue)) return false
     return this.value === value.value
   }
 
+  public type(): string {
+    return Types[Types.object]
+  }
+
   public asNumber(): number {
-    return this.value
+    return Number(this.value)
   }
 
   public asString(): string {

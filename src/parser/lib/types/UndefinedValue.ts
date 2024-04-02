@@ -2,11 +2,11 @@ import IValue from '../IValue'
 import Types from './Types'
 import Value from '../Value'
 
-export default class UndefinedValue extends Value<undefined> {
-  public static UNDEFINED = new UndefinedValue(undefined)
+export default class UndefinedValue extends Value {
+  public static UNDEFINED = new UndefinedValue()
 
-  constructor(value: undefined) {
-    super(value, Types.BOOLEAN)
+  constructor() {
+    super(undefined, Types.undefined)
   }
 
   public compareTo(o: IValue): number {

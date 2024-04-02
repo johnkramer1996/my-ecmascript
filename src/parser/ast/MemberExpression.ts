@@ -3,11 +3,16 @@ import IVisitor from './IVisitor'
 import { IAccessible } from './IAccessible'
 import IValue from 'parser/lib/IValue'
 import ArrayValue from 'parser/lib/types/ArrayValue'
-import ObjectValue from 'parser/lib/types/ObjectValue'
+import { ObjectValue } from 'parser/lib/types/ObjectValue'
 import { FunctionValue } from 'parser/lib/types/FunctionValue'
+import UndefinedValue from 'parser/lib/types/UndefinedValue'
+import NumberValue from 'parser/lib/types/NumberValue'
+import StringValue from 'parser/lib/types/StringValue'
+import BooleanValue from 'parser/lib/types/BooleanValue'
 
 export default class MemberExpression implements IExpression, IAccessible {
-  private result!: IValue
+  private objectValue!: IValue
+  private propertyValue!: IValue
   constructor(
     public object: IExpression,
     public property: IExpression,
@@ -16,22 +21,32 @@ export default class MemberExpression implements IExpression, IAccessible {
   ) {}
 
   public eval(): IValue {
-    this.result = this.object.eval()
-    return this.get()
+    this.objectValue = this.object.eval()
+    this.propertyValue = this.property.eval()
+    const object = this.getObject(this.objectValue)
+    if (object instanceof UndefinedValue) {
+      if (!this.optional) throw new Error(`Cannot get properties of undefined ${this.propertyValue.asString()}`)
+      return object
+    }
+    return object.get(this.propertyValue.asString())
   }
 
-  public getThis(): ObjectValue | ArrayValue {
-    return this.getObject(this.result)
-  }
-
-  public get(): IValue {
-    return this.getObject(this.result).get(this.property.eval().asString())
+  public getThis(): ObjectValue | ArrayValue | UndefinedValue {
+    return this.getObject(this.objectValue)
   }
 
   public set(value: IValue): IValue {
     const object = this.getObject(this.object.eval())
-    object.set(this.property.eval().asString(), value)
-    return value
+    if (object instanceof UndefinedValue)
+      throw new Error(`Cannot set properties of undefined ${this.propertyValue.asString()}`)
+    return object.set(this.propertyValue.asString(), value), value
+  }
+
+  public delete(): boolean {
+    const object = this.getObject(this.object.eval())
+    if (object instanceof UndefinedValue)
+      throw new Error(`Cannot delete properties of undefined ${this.propertyValue.asString()}`)
+    return object.delete(this.propertyValue.asString())
   }
 
   public define(value: IValue): IValue {
@@ -42,26 +57,14 @@ export default class MemberExpression implements IExpression, IAccessible {
     throw new Error('the container member cannot be hoistinged')
   }
 
-  private getObject(value: IValue): ArrayValue | ObjectValue {
-    if (value instanceof ArrayValue || value instanceof ObjectValue) return value
+  private getObject(value: IValue): ArrayValue | ObjectValue | UndefinedValue {
+    if (value instanceof ObjectValue) return value
+    if (value instanceof ArrayValue) return value
     if (value instanceof FunctionValue) return value.raw().getValue()
-    return new ObjectValue(
-      null,
-      // new Map([
-      //   [
-      //     'toString',
-      //     new FunctionValue({
-      //       call(...args) {
-      //         const _this = Variables.get('this')
-      //         return new StringValue(_this.asString())
-      //       },
-      //       toString() {
-      //         return '[Native code]'
-      //       },
-      //     }),
-      //   ],
-      // ]),
-    )
+    if (value instanceof NumberValue) return new ObjectValue(ObjectValue.NumberPrototype)
+    if (value instanceof StringValue) return new ObjectValue(ObjectValue.StringPrototype)
+    if (value instanceof BooleanValue) return new ObjectValue(ObjectValue.BooleanPrototype)
+    return UndefinedValue.UNDEFINED
   }
 
   public accept(visitor: IVisitor): void {

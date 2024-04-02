@@ -22,7 +22,7 @@ export default class ArrayValue extends Value<MyArray<IValue>> {
   constructor(value: number)
   constructor(size: IValue[])
   constructor(value: number | IValue[]) {
-    super(typeof value === 'number' ? new MyArray(value) : MyArray.from([...value]), Types.ARRAY)
+    super(typeof value === 'number' ? new MyArray(value) : MyArray.from([...value]), Types.array)
   }
 
   public size(): number {
@@ -35,6 +35,10 @@ export default class ArrayValue extends Value<MyArray<IValue>> {
 
   public set(index: number | string, value: IValue) {
     this.value[Number(index)] = value
+  }
+
+  public delete(index: number | string): boolean {
+    return delete this.value[Number(index)]
   }
 
   public getCopyElements(): IValue[] {
