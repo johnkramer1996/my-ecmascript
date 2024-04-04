@@ -1,17 +1,17 @@
-import IValue from 'parser/lib/IValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
 import IExpression from './IExpression'
 import IVisitor from './IVisitor'
 import ArrayValue from 'parser/lib/types/ArrayValue'
-import UndefinedValue from 'parser/lib/types/UndefinedValue'
+import UndefinedType from 'parser/lib/types/UndefinedValue'
 
 export default class ArrayExpression implements IExpression {
   constructor(public elements: (IExpression | null)[]) {}
 
-  public eval(): IValue {
+  public eval(): IECMAScriptLanguageType {
     const size = this.elements.length
     const array = new ArrayValue(size)
     this.elements.forEach((expr, i) => {
-      array.set(String(i), expr?.eval() ?? UndefinedValue.UNDEFINED)
+      array.set(String(i), expr?.eval() ?? UndefinedType.UNDEFINED)
     })
     return array
   }

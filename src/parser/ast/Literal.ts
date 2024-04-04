@@ -1,39 +1,39 @@
-import IValue from 'parser/lib/IValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
 import IVisitor from './IVisitor'
 import IExpression from './IExpression'
-import NumberValue from 'parser/lib/types/NumberValue'
-import StringValue from 'parser/lib/types/StringValue'
+import NumberType from 'parser/lib/types/NumberValue'
+import StringType from 'parser/lib/types/StringValue'
 import { IAccessible } from './IAccessible'
-import BooleanValue from 'parser/lib/types/BooleanValue'
-import NullValue from 'parser/lib/types/NullValue'
+import { BooleanType } from 'parser/lib/types/BooleanValue'
+import NullType from 'parser/lib/types/NullValue'
 
 export default class Literal implements IExpression, IAccessible {
-  public value: IValue
+  public value: IECMAScriptLanguageType
   public raw?: string
 
   constructor(value: number, raw: string)
   constructor(value: string, raw: string)
   constructor(value: boolean, raw: string)
   constructor(value: null, raw: string)
-  constructor(value: IValue, raw?: string)
-  constructor(value: number | string | boolean | null | IValue, raw: string) {
-    if (typeof value === 'number') value = new NumberValue(value)
-    else if (typeof value === 'string') value = new StringValue(value)
-    else if (typeof value === 'boolean') value = new BooleanValue(value)
-    else if (value === null) value = new NullValue()
+  constructor(value: IECMAScriptLanguageType, raw?: string)
+  constructor(value: number | string | boolean | null | IECMAScriptLanguageType, raw: string) {
+    if (typeof value === 'number') value = new NumberType(value)
+    else if (typeof value === 'string') value = new StringType(value)
+    else if (typeof value === 'boolean') value = new BooleanType(value)
+    else if (value === null) value = new NullType()
     this.value = value
     this.raw = `"${raw}"`
   }
 
-  public eval(): IValue {
+  public eval(): IECMAScriptLanguageType {
     return this.value
   }
 
-  public set(value: IValue): IValue {
+  public set(value: IECMAScriptLanguageType): IECMAScriptLanguageType {
     throw new Error('Method `Literal.set` not implemented.')
   }
 
-  public define(value: IValue): void {
+  public define(value: IECMAScriptLanguageType): void {
     throw new Error('Method `Literal.define` not implemented.')
   }
 

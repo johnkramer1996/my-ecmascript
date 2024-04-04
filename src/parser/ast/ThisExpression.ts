@@ -1,10 +1,10 @@
-import IValue from 'parser/lib/IValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
 import IExpression from './IExpression'
 import { Variables } from 'parser/lib/Variables'
 import IVisitor from './IVisitor'
 
 export class ThisExpression implements IExpression {
-  public eval(): IValue {
+  public eval(): IECMAScriptLanguageType {
     return Variables.getThis()
   }
 

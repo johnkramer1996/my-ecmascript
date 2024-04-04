@@ -1,7 +1,7 @@
 import IStatement from 'parser/ast/IStatement'
-import IValue from './IValue'
-import Types from './types/Types'
-import { ObjectValue } from './types/ObjectValue'
+import IECMAScriptLanguageType from './IValue'
+import ECMAScriptLanguageTypes from './types/Types'
+import { ObjectType } from './types/ObjectValue'
 
 export default abstract class Value<
   T extends
@@ -10,20 +10,20 @@ export default abstract class Value<
     | boolean
     | undefined
     | null
-    | IValue[]
+    | IECMAScriptLanguageType[]
     | Object
     | Function
     | IStatement
-    | ObjectValue = any,
-> implements IValue
+    | ObjectType = any,
+> implements IECMAScriptLanguageType
 {
-  constructor(protected value: T, protected typeValue: Types) {}
+  constructor(protected value: T, protected typeValue: ECMAScriptLanguageTypes) {}
 
-  public abstract equals(value: IValue): boolean
-  public abstract compareTo(o: IValue): number
+  public abstract equals(value: IECMAScriptLanguageType): boolean
+  public abstract compareTo(o: IECMAScriptLanguageType): number
 
   public type(): string {
-    return Types[this.typeValue]
+    return ECMAScriptLanguageTypes[this.typeValue]
   }
 
   public raw(): T {

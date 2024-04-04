@@ -1,28 +1,28 @@
 import IVisitor from './IVisitor'
 import { IAccessible } from './IAccessible'
-import IValue from 'parser/lib/IValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
 import { Variables } from 'parser/lib/Variables'
 import ArrayValue from 'parser/lib/types/ArrayValue'
-import BooleanValue from 'parser/lib/types/BooleanValue'
+import { BooleanType } from 'parser/lib/types/BooleanValue'
 import IExpression from './IExpression'
 
 export class ArrayPattern implements IExpression, IAccessible, Iterable<IAccessible> {
   constructor(public elements: IAccessible[]) {}
 
-  public eval(): IValue {
+  public eval(): IECMAScriptLanguageType {
     return Variables.get(this.getName())
   }
 
-  public set(value: IValue): IValue {
+  public set(value: IECMAScriptLanguageType): IECMAScriptLanguageType {
     if (!(value instanceof ArrayValue)) throw new Error('expect array')
     this.elements.forEach((variable, i) => variable.set(value.get(String(i))))
-    return BooleanValue.FALSE
+    return BooleanType.FALSE
   }
 
-  public define(value: IValue): IValue {
+  public define(value: IECMAScriptLanguageType): IECMAScriptLanguageType {
     if (!(value instanceof ArrayValue)) throw new Error('expect array')
     this.elements.forEach((variable, i) => variable.define(value.get(String(i))))
-    return BooleanValue.FALSE
+    return BooleanType.FALSE
   }
 
   public hoisting(kind: string): void {

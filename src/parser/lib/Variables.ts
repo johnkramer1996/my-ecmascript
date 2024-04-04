@@ -1,87 +1,62 @@
-import IStatement from 'parser/ast/IStatement'
-import IValue from './IValue'
-import IVisitor from 'parser/ast/IVisitor'
-import Function from './Function'
-import UndefinedValue from './types/UndefinedValue'
-import { ObjectValue } from './types/ObjectValue'
-import { FunctionValue } from './types/FunctionValue'
+import IECMAScriptLanguageType from './IValue'
+import UndefinedType from './types/UndefinedValue'
+import { ObjectType } from './types/ObjectValue'
+import { FunctionObjectType } from './types/FunctionValue'
 import ArrayValue from './types/ArrayValue'
-import StringValue from './types/StringValue'
-import Types from './types/Types'
-import Lexer from 'parser/Lexer'
-import Parser from 'parser/Parser'
-import NumberValue from './types/NumberValue'
+import StringType from './types/StringValue'
+import NumberType from './types/NumberValue'
 import { initFundamentalObjects } from './fundamental-objects/NativeFunction'
-import { Identifier } from 'parser/ast/Identifier'
 import { ClassDeclaration } from 'parser/ast/ClassDeclarationStatement'
 
 const uninitialized = '<uninitialized>'
 
-// var Scope = function Scope(flags) {
-//   this.flags = flags;
-//   this.var = [];
-//   this.lexical = [];
-//   this.functions = [];
-//   this.inClassFieldInit = false;
-//   pp$3.enterScope = function(flags) {
-//     this.scopeStack.push(new Scope(flags));
-//   };
-
-//   pp$3.exitScope = function() {
-//     this.scopeStack.pop();
-//   };
-
-// };
-
-type Variable = { value: IValue | typeof uninitialized; kind: string }
+type Variable = { value: IECMAScriptLanguageType | typeof uninitialized; kind: string }
 
 export class Scope<T extends This = This> {
   public variables: Map<String, Variable> = new Map()
 
   constructor(
-    public callee: Function | null = null,
+    public callee: FunctionObjectType | ClassDeclaration | null = null,
     public parent: Scope<T> | null = null,
     public calleeParent: Scope<T> | null = null,
     public this_: T,
   ) {}
 }
 
-type GlobalThis = ObjectValue
-export type This = GlobalThis | ArrayValue | UndefinedValue
+type GlobalThis = ObjectType
+export type This = GlobalThis | ArrayValue | UndefinedType
 
 export class Variables {
   public static globalScope: Scope<GlobalThis>
   public static scope: Scope<This>
 
   public static init() {
-    const globalObject = new ObjectValue()
-    globalObject.set('window', globalObject)
-    globalObject.set('globalThis', globalObject)
-    globalObject.set('NaN', NumberValue.NaN)
-    globalObject.set('undefined', UndefinedValue.UNDEFINED)
+    const globalObject = new ObjectType()
+    globalObject['[[Set]]']('window', globalObject)
+    globalObject['[[Set]]']('globalThis', globalObject)
+    globalObject['[[Set]]']('NaN', NumberType.NaN)
+    globalObject['[[Set]]']('undefined', UndefinedType.UNDEFINED)
 
     this.globalScope = this.scope = new Scope(null, null, null, globalObject)
 
-    ObjectValue.ObjectPrototype.set(
+    ObjectType.ObjectPrototype['[[Set]]'](
       'toString',
-      new FunctionValue({
-        call(...args) {
+      new FunctionObjectType({
+        execute(...args) {
           const _this = Variables.get('this')
-          return new StringValue(`[${_this.type()} object]`)
+          return new StringType(`[${_this.type()} object]`)
         },
-        getValue() {
-          return new ObjectValue()
-        },
+        accept(visitor) {},
       }),
     )
 
     const { Object_, Function_, Number_, String_, Boolean_ } = initFundamentalObjects()
 
     Variables.hoisting('Object', 'func', Object_)
-    Variables.hoisting('Function', 'func', Function_)
+    // Variables.hoisting('Function', 'func', Function_)
     Variables.hoisting('Number', 'func', Number_)
     Variables.hoisting('String', 'func', String_)
-    Variables.hoisting('Boolean', 'func', Boolean_)
+    // Variables.hoisting('Boolean', 'func', Boolean_)
   }
 
   public static bindThis(value: This): void {
@@ -96,8 +71,8 @@ export class Variables {
     return this.scope
   }
 
-  public static enterScope(callee?: Function, parent?: Scope): void {
-    this.scope = new Scope(callee, parent ?? this.scope, this.scope, UndefinedValue.UNDEFINED)
+  public static enterScope(callee?: FunctionObjectType | ClassDeclaration, parent?: Scope): void {
+    this.scope = new Scope(callee, parent ?? this.scope, this.scope, UndefinedType.UNDEFINED)
   }
 
   public static exitScope(): Scope {
@@ -110,19 +85,19 @@ export class Variables {
     return Boolean(this.lookUp(key))
   }
 
-  public static get(key: string): IValue {
+  public static get(key: string): IECMAScriptLanguageType {
     const scopeData = this.lookUp(key)
     if (!scopeData) {
-      const value = this.globalScope.this_.get(key)
-      if (!(value === UndefinedValue.UNDEFINED && key !== 'undefined')) return value
+      const value = this.globalScope.this_['[[Get]]'](key)['[[Value]]']
+      if (!(value === UndefinedType.UNDEFINED && key !== 'undefined')) return value
       throw new ReferenceError(`${key} is not defined`)
     }
-    const variable = scopeData.variables.get(key)
-    if (variable?.value === uninitialized) throw new ReferenceError(`"Cannot access '${key}' before init`)
-    return (scopeData.variables.get(key) as Variable).value as IValue
+    const variable = scopeData.variables.get(key) as Variable
+    if (variable.value === uninitialized) throw new ReferenceError(`"Cannot access '${key}' before init`)
+    return variable.value
   }
 
-  public static set(key: string, value: IValue): IValue {
+  public static set(key: string, value: IECMAScriptLanguageType): IECMAScriptLanguageType {
     const scopeData = this.lookUp(key)
     if (!scopeData) throw new ReferenceError(`${key} is not defined`)
     const variable = scopeData.variables.get(key)
@@ -133,19 +108,19 @@ export class Variables {
     return value
   }
 
-  public static define(key: string, value: IValue): void {
+  public static define(key: string, value: IECMAScriptLanguageType): void {
     const variable = this.scope.variables.get(key)
     if (!variable) throw new ReferenceError('Variable undefined ' + key)
     if (!(variable.value === uninitialized) && variable.kind === 'func') return
     variable.value = value
   }
 
-  public static hoisting(key: string, kind: string, val: IValue = UndefinedValue.UNDEFINED) {
+  public static hoisting(key: string, kind: string, val: IECMAScriptLanguageType = UndefinedType.UNDEFINED) {
     const variable = this.scope.variables.get(key)
     if (variable?.value === uninitialized) {
       throw new SyntaxError(`Identifier '${key}' has already been declared. `)
     }
-    const value = kind === 'func' ? val : kind === 'var' ? UndefinedValue.UNDEFINED : uninitialized
+    const value = kind === 'func' ? val : kind === 'var' ? UndefinedType.UNDEFINED : uninitialized
     this.scope.variables.set(key, { value, kind })
   }
 

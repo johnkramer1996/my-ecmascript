@@ -1,4 +1,4 @@
-import { UserDefinedFunction, FunctionValue } from 'parser/lib/types/FunctionValue'
+import { FunctionObjectType, ConstructorValue } from 'parser/lib/types/FunctionValue'
 import IStatement from './IStatement'
 import IVisitor from './IVisitor'
 import { Identifier } from './Identifier'
@@ -12,10 +12,7 @@ export class FunctionDeclarationStatement implements IStatement {
   }
 
   public hoisting() {
-    this.name.hoisting(
-      'func',
-      new FunctionValue(new UserDefinedFunction(this.body, this.params, null, this.name.toString())),
-    )
+    this.name.hoisting('func', new ConstructorValue(this.body))
   }
 
   public accept(visitor: IVisitor): void {

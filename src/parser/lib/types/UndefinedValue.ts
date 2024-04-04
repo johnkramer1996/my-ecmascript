@@ -1,21 +1,21 @@
-import IValue from '../IValue'
-import Types from './Types'
+import IECMAScriptLanguageType from '../IValue'
+import ECMAScriptLanguageTypes from './Types'
 import Value from '../Value'
 
-export default class UndefinedValue extends Value {
-  public static UNDEFINED = new UndefinedValue()
+export default class UndefinedType extends Value {
+  public static UNDEFINED = new UndefinedType()
 
   constructor() {
-    super(undefined, Types.undefined)
+    super(undefined, ECMAScriptLanguageTypes.undefined)
   }
 
-  public compareTo(o: IValue): number {
+  public compareTo(o: IECMAScriptLanguageType): number {
     return this.asString().localeCompare(o.asString())
   }
 
-  public equals(value: IValue): boolean {
+  public equals(value: IECMAScriptLanguageType): boolean {
     if (this === value) return true
-    if (!(value instanceof UndefinedValue)) return false
+    if (!(value instanceof UndefinedType)) return false
     return this.value === value.value
   }
 

@@ -1,17 +1,17 @@
 import TypeException from 'exceptions/TypeException'
-import IValue from '../IValue'
-import Types from './Types'
+import IECMAScriptLanguageType from '../IValue'
+import ECMAScriptLanguageTypes from './Types'
 import Value from '../Value'
-import UndefinedValue from './UndefinedValue'
+import UndefinedType from './UndefinedValue'
 
-export class MyArray<T extends IValue> extends Array<T> implements Iterable<IValue> {
+export class MyArray<T extends IECMAScriptLanguageType> extends Array<T> implements Iterable<IECMAScriptLanguageType> {
   toString() {
     return this.join(', ')
   }
 }
 
-export default class ArrayValue extends Value<MyArray<IValue>> {
-  public static add(array: ArrayValue, value: IValue): ArrayValue {
+export default class ArrayValue extends Value<MyArray<IECMAScriptLanguageType>> {
+  public static add(array: ArrayValue, value: IECMAScriptLanguageType): ArrayValue {
     return new ArrayValue([...array, value])
   }
 
@@ -20,20 +20,20 @@ export default class ArrayValue extends Value<MyArray<IValue>> {
   }
 
   constructor(value: number)
-  constructor(size: IValue[])
-  constructor(value: number | IValue[]) {
-    super(typeof value === 'number' ? new MyArray(value) : MyArray.from([...value]), Types.array)
+  constructor(size: IECMAScriptLanguageType[])
+  constructor(value: number | IECMAScriptLanguageType[]) {
+    super(typeof value === 'number' ? new MyArray(value) : MyArray.from([...value]), ECMAScriptLanguageTypes.object)
   }
 
   public size(): number {
     return this.value.length
   }
 
-  public get(property: string): IValue {
-    return this.value[Number(property)] ?? UndefinedValue.UNDEFINED
+  public get(property: string): IECMAScriptLanguageType {
+    return this.value[Number(property)] ?? UndefinedType.UNDEFINED
   }
 
-  public set(index: number | string, value: IValue) {
+  public set(index: number | string, value: IECMAScriptLanguageType) {
     this.value[Number(index)] = value
   }
 
@@ -41,20 +41,20 @@ export default class ArrayValue extends Value<MyArray<IValue>> {
     return delete this.value[Number(index)]
   }
 
-  public getCopyElements(): IValue[] {
+  public getCopyElements(): IECMAScriptLanguageType[] {
     return [...new ArrayValue([...this.value]).value]
   }
 
-  public compareTo(o: IValue): number {
+  public compareTo(o: IECMAScriptLanguageType): number {
     if (o instanceof ArrayValue) return this.size() >= o.size() ? this.size() - o.size() : o.size() - this.size()
     return this.asString().localeCompare(o.asString())
   }
 
-  public [Symbol.iterator](): Iterator<IValue> {
+  public [Symbol.iterator](): Iterator<IECMAScriptLanguageType> {
     return this.value[Symbol.iterator]()
   }
 
-  public equals(value: IValue): boolean {
+  public equals(value: IECMAScriptLanguageType): boolean {
     if (this === value) return true
     if (!(value instanceof ArrayValue)) return false
     return this.value === value.value

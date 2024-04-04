@@ -1,12 +1,12 @@
-import IValue from 'parser/lib/IValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
 import IExpression from './IExpression'
 import IVisitor from './IVisitor'
-import { FunctionValue } from 'parser/lib/types/FunctionValue'
-import ECStack from 'parser/lib/CallStack'
+import { ConstructorValue, FunctionObjectType } from 'parser/lib/types/FunctionValue'
+import { CallStack, ExecutionContextStack } from 'parser/lib/CallStack'
 import MemberExpression from './MemberExpression'
 import { This, Variables } from 'parser/lib/Variables'
-import UndefinedValue from 'parser/lib/types/UndefinedValue'
-import { ClassInstance, ObjectValue } from 'parser/lib/types/ObjectValue'
+import UndefinedType from 'parser/lib/types/UndefinedValue'
+import { ClassInstance, ObjectType } from 'parser/lib/types/ObjectValue'
 import ArrayValue from 'parser/lib/types/ArrayValue'
 import { ClassDeclaration, Super } from './ClassDeclarationStatement'
 
@@ -15,10 +15,12 @@ import { ClassDeclaration, Super } from './ClassDeclarationStatement'
 // this.hoisting()
 // this.bindThis()
 
+// TODO: MERGE FUNCTION AND CALSS
+
 export class CallExpression implements IExpression {
   constructor(public callee: IExpression, public args: IExpression[]) {}
 
-  public eval(): IValue {
+  public eval(): IECMAScriptLanguageType {
     const value = this.callee.eval()
     const args = this.args.map((v) => v.eval())
 
@@ -27,31 +29,33 @@ export class CallExpression implements IExpression {
         ? this.callee.getThis()
         : this.callee instanceof Super
         ? Variables.getThis()
-        : UndefinedValue.UNDEFINED
+        : UndefinedType.UNDEFINED
 
     return CallExpression.eval(value, args, this_, this.callee instanceof Super)
   }
 
-  static eval(value: IValue, args: IValue[], this_: This, super_ = false): IValue {
-    if (!(value instanceof FunctionValue)) throw new Error('expect function instead get1 ' + value)
+  static eval(
+    value: IECMAScriptLanguageType,
+    args: IECMAScriptLanguageType[],
+    this_: This,
+    super_ = false,
+  ): IECMAScriptLanguageType {
+    if (!(value instanceof FunctionObjectType)) throw new Error('expect function instead get1 ' + value)
 
-    const func = value.raw()
-
-    ECStack.enter('call')
-    Variables.enterScope(func, func.scope)
-    Variables.bindThis(this_)
-    const result = func.call(...args)
+    CallStack.enter('call')
+    Variables.enterScope(value, value.getScope())
+    const result = value['[[Call]]'](this_, args)
     Variables.exitScope()
-    ECStack.exit()
+    CallStack.exit()
 
     if (super_) {
       const value = Variables.getScope().callee
       if (value instanceof ClassDeclaration) {
-        value.initValue()
+        // value.initValue()
       }
     }
 
-    return result
+    return result['[[Value]]']
   }
 
   public accept(visitor: IVisitor): void {
@@ -66,23 +70,21 @@ export class CallExpression implements IExpression {
 export class NewExpression implements IExpression {
   constructor(public callee: IExpression, public args: IExpression[]) {}
 
-  public eval(): IValue {
+  public eval(): IECMAScriptLanguageType {
     const value = this.callee.eval()
-    if (!(value instanceof FunctionValue)) throw new Error('expect function instead get2 ' + value)
+    if (!(value instanceof ConstructorValue)) throw new Error('expect function instead get2 ' + value)
 
-    const func = value.raw()
-    const this_ = new ClassInstance(func.getValue().get('prototype'), undefined, func.name ?? '')
+    const this_ = new ClassInstance(value['[[prototype]]'], undefined, '')
+    // value.getName()
 
-    ECStack.enter('new')
-    Variables.enterScope(func, func.scope)
-    Variables.bindThis(this_)
+    CallStack.enter('new')
+    Variables.enterScope(value, value.getScope())
     const values = this.args.map((v) => v.eval())
-    const result = func.call(...values) // this === 0
+    const result = value['[[construct]]'](this_, values) // this === 0
     Variables.exitScope()
-    ECStack.exit()
+    CallStack.exit()
 
-    const isObject = result instanceof ObjectValue || result instanceof ArrayValue || result instanceof FunctionValue
-    return isObject ? result : this_
+    return result['[[Value]]']
   }
 
   public accept(visitor: IVisitor): void {

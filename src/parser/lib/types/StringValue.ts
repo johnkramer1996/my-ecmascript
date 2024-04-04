@@ -1,25 +1,25 @@
-import IValue from '../IValue'
-import Types from './Types'
+import IECMAScriptLanguageType from '../IValue'
+import ECMAScriptLanguageTypes from './Types'
 import Value from '../Value'
 
-export default class StringValue extends Value<string> {
-  static EMPTY = new StringValue('')
+export default class StringType extends Value<string> {
+  static EMPTY = new StringType('')
 
   constructor(value: string) {
-    super(value, Types.string)
+    super(value, ECMAScriptLanguageTypes.string)
   }
 
   public length(): number {
     return this.value.length
   }
 
-  public compareTo(o: IValue): number {
+  public compareTo(o: IECMAScriptLanguageType): number {
     return this.asString().localeCompare(o.asString())
   }
 
-  public equals(value: IValue): boolean {
+  public equals(value: IECMAScriptLanguageType): boolean {
     if (this === value) return true
-    if (!(value instanceof StringValue)) return false
+    if (!(value instanceof StringType)) return false
     return this.value === value.value
   }
 

@@ -1,12 +1,12 @@
-import IValue from 'parser/lib/IValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
 import IStatement from './IStatement'
 import IVisitor from './IVisitor'
 import Function from 'parser/lib/Function'
-import { ClassInstance, ObjectValue } from 'parser/lib/types/ObjectValue'
-import { FunctionValue } from 'parser/lib/types/FunctionValue'
+import { ClassInstance, ObjectType } from 'parser/lib/types/ObjectValue'
+import { FunctionObjectType } from 'parser/lib/types/FunctionValue'
 import { Identifier } from './Identifier'
 import IExpression from './IExpression'
-import UndefinedValue from 'parser/lib/types/UndefinedValue'
+import UndefinedType from 'parser/lib/types/UndefinedValue'
 import { Scope, This, Variables } from 'parser/lib/Variables'
 import FunctionExpression from './FunctionExpression'
 import { CallExpression } from './CallExpression'
@@ -27,22 +27,23 @@ export class PropertyDefinition {
 }
 
 export class ClassField {
-  constructor(public name: string, public value: IValue) {}
+  constructor(public name: string, public value: IECMAScriptLanguageType) {}
 }
 
 export class ClassMethod {
-  constructor(public name: string, public value: FunctionValue) {}
+  constructor(public name: string, public value: FunctionObjectType) {}
 }
 
 export class Super implements IExpression {
-  public eval(): IValue {
-    const class_ = Variables.getScope().calleeParent?.callee
-    if (!class_)
-      throw new Error('Super calls are not permitted outside constructors or in nested functions inside constructors.')
-    if (!(class_ instanceof ClassDeclaration)) throw new Error('not have extends class')
-    const superClass = class_.superClass && class_.superClass.eval().raw()
-    if (!(superClass instanceof ClassDeclaration)) throw new Error("'super' can only be referenced in a derived class.")
-    return new FunctionValue(superClass)
+  public eval(): IECMAScriptLanguageType {
+    return UndefinedType.UNDEFINED
+    // const class_ = Variables.getScope().calleeParent?.callee
+    // if (!class_)
+    //   throw new Error('Super calls are not permitted outside constructors or in nested functions inside constructors.')
+    // if (!(class_ instanceof ClassDeclaration)) throw new Error('not have extends class')
+    // const superClass = class_.superClass && class_.superClass.eval().raw()
+    // if (!(superClass instanceof ClassDeclaration)) throw new Error("'super' can only be referenced in a derived class.")
+    // return new FunctionValue(superClass)
   }
 
   public accept(visitor: IVisitor): void {
@@ -54,11 +55,10 @@ export class Super implements IExpression {
   }
 }
 
-export class ClassDeclaration implements Function {
-  public scope: Scope
-  private value: ObjectValue
-  public constructor_: FunctionValue | null = null
-  public name: string
+export class ClassDeclaration extends ObjectType {
+  public constructor_: FunctionObjectType | null = null
+  private name: string
+  private scope: Scope
 
   constructor(
     public id: Identifier,
@@ -68,77 +68,65 @@ export class ClassDeclaration implements Function {
     public staticClassFields: ClassField[] = [],
     public staticClassMethods: ClassMethod[] = [],
   ) {
-    this.name = id.name
-    this.scope = Variables.scope
-    const superClassValue = this.getSuperClass()
-    const proto = superClassValue?.getValue()
-    const prototype = new ObjectValue(proto?.get('prototype'))
-    prototype.set('constructor', new FunctionValue(this))
+    const __proto__ = superClass?.eval()
+    if (__proto__ && !(__proto__ instanceof ClassDeclaration)) throw new Error('Extends can only func or class')
 
-    const value = (this.value = new ObjectValue(proto ?? ObjectValue.FunctionPrototype))
-    value.set('prototype', prototype)
+    super(__proto__ ?? ObjectType.FunctionPrototype)
+    this.name = id.name
+
+    const prototype = new ObjectType(__proto__ && __proto__['[[Get]]']('prototype')['[[Value]]'])
+    prototype['[[Set]]']('constructor', this)
+    this['[[Set]]']('prototype', prototype)
 
     classMethods.map((method) => {
-      const name = method.name
-      prototype.set(method.name, method.value)
-      if (name === 'constructor') {
+      prototype['[[Set]]'](method.name, method.value)
+      if (method.name === 'constructor') {
         this.constructor_ = method.value
       }
     })
 
-    staticClassFields.forEach((m) => value.set(m.name, m.value))
-    staticClassMethods.forEach((m) => value.set(m.name, m.value))
-  }
-
-  public getSuperClass(): Function | undefined {
-    const superClassValue = this.superClass?.eval()
-    if (superClassValue && !(superClassValue instanceof FunctionValue))
-      throw new Error('Extends can only func or class')
-    return superClassValue?.raw()
+    staticClassFields.forEach((m) => this['[[Set]]'](m.name, m.value))
+    staticClassMethods.forEach((m) => this['[[Set]]'](m.name, m.value))
+    this.scope = Variables.scope
   }
 
   public getScope(): Scope {
     return this.scope
   }
 
-  public getValue(): ObjectValue {
-    return this.value
+  public getName(): string {
+    return this.name ?? ''
   }
 
-  public call(...args: IValue[]): IValue {
-    const this_ = Variables.getThis()
-    if (!(this_ instanceof ClassInstance)) throw new Error('only class instance')
+  public call(thisArgument: This, ...argumentsList: IECMAScriptLanguageType[]): IECMAScriptLanguageType {
+    Variables.bindThis(this)
+    if (!(thisArgument instanceof ClassInstance)) throw new Error('only class instance')
     if (!this.superClass) {
-      console.log('active')
-      this_.activate()
     }
 
-    const superClass = this.getSuperClass()
-    if (!this.constructor_ && superClass) {
-      // new scope
-      superClass.call(...args)
-      CallExpression.eval(new FunctionValue(superClass), [], this_)
+    const __proto__ = this.superClass?.eval()
+    if (__proto__ && !(__proto__ instanceof ClassDeclaration)) throw new Error('Extends can only func or class')
+    if (!this.constructor_ && __proto__) {
+      CallExpression.eval(__proto__, [], thisArgument)
     }
 
-    if (!this.constructor_ || (this.constructor_ && !superClass)) {
+    if (!this.constructor_ || (this.constructor_ && !__proto__)) {
       this.initValue()
     }
 
-    const result = this.constructor_ && CallExpression.eval(this.constructor_, args, this_)
+    const result = this.constructor_ && CallExpression.eval(this.constructor_, argumentsList, thisArgument)
 
-    if (this.superClass && this_ instanceof ClassInstance) {
-      console.log('first')
+    if (this.superClass && thisArgument instanceof ClassInstance) {
       // this_.activate()
-      this_.hasAccess()
     }
 
-    return result ?? UndefinedValue.UNDEFINED
+    return result ?? UndefinedType.UNDEFINED
   }
 
   public initValue() {
     const this_ = Variables.getThis()
-    if (this_ instanceof ObjectValue) {
-      for (const f of this.classFields) this_.set(f.name, f.value)
+    if (this_ instanceof ObjectType) {
+      for (const f of this.classFields) this_['[[Set]]'](f.name, f.value)
     }
   }
 
@@ -160,7 +148,7 @@ export class ClassDeclarationStatement implements IStatement {
     const staticClassFields: ClassField[] = []
 
     this.fields.forEach((f) => {
-      const field = new ClassField(f.key.toString(), f.value?.eval() || UndefinedValue.UNDEFINED)
+      const field = new ClassField(f.key.toString(), f.value?.eval() || UndefinedType.UNDEFINED)
       if (f.static_) staticClassFields.push(field)
       else classFields.push(field)
     })
@@ -181,7 +169,7 @@ export class ClassDeclarationStatement implements IStatement {
       staticClassMethods,
     )
     this.id.hoisting('var')
-    this.id.define(new FunctionValue(declaration))
+    this.id.define(declaration)
   }
 
   public addField(field: PropertyDefinition) {

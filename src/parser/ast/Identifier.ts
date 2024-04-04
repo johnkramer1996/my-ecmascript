@@ -1,25 +1,26 @@
 import IVisitor from './IVisitor'
 import { IAccessible } from './IAccessible'
 import { Variables } from 'parser/lib/Variables'
-import IValue from 'parser/lib/IValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
 import IExpression from './IExpression'
 
 export class Identifier implements IExpression, IAccessible {
   constructor(public name: string) {}
 
-  public eval(): IValue {
-    return Variables.get(this.name)
+  public eval(): IECMAScriptLanguageType {
+    const result = Variables.get(this.name)
+    return result
   }
 
-  public set(value: IValue): IValue {
+  public set(value: IECMAScriptLanguageType): IECMAScriptLanguageType {
     return Variables.set(this.name, value), value
   }
 
-  public define(value: IValue): void {
+  public define(value: IECMAScriptLanguageType): void {
     Variables.define(this.name, value)
   }
 
-  public hoisting(kind: string, value?: IValue): void {
+  public hoisting(kind: string, value?: IECMAScriptLanguageType): void {
     Variables.hoisting(this.name, kind, value)
   }
 

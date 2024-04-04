@@ -1,7 +1,7 @@
 import IExpression from './IExpression'
 import { Identifier } from './Identifier'
 import IVisitor from './IVisitor'
-import IValue from 'parser/lib/IValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
 import BinaryExpression, { BinaryOperator } from './BinaryExpression'
 import { IAccessible } from './IAccessible'
 import Literal from './Literal'
@@ -37,15 +37,14 @@ export default class AssignmentExpression implements IExpression {
 
   constructor(public operator: AssignmentOperator, public target: IAccessible, public expression: IExpression) {}
 
-  public eval(): IValue {
+  public eval(): IECMAScriptLanguageType {
     const result = this.expression.eval()
     const binary = AssignmentExpression.binaryOperator.get(this.operator)
-    const value = binary
-      ? new BinaryExpression(binary, new Literal(this.target.eval()), new Literal(result)).eval()
-      : result
 
-    const rs = this.target.set(value)
-    return rs
+    const oldValue = this.target.eval()
+    const value = binary ? new BinaryExpression(binary, new Literal(oldValue), new Literal(result)).eval() : result
+
+    return this.target.set(value)
   }
 
   public accept(visitor: IVisitor): void {

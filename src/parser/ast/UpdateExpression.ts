@@ -1,8 +1,8 @@
 import IVisitor from './IVisitor'
 import { IAccessible, instanceOfIAccessible } from './IAccessible'
 import IExpression from './IExpression'
-import NumberValue from 'parser/lib/types/NumberValue'
-import IValue from 'parser/lib/IValue'
+import NumberType from 'parser/lib/types/NumberValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
 import OperationIsNotSupportedException from 'exceptions/OperationIsNotSupportedException'
 
 enum Operator {
@@ -15,16 +15,16 @@ export default class UpdateExpression implements IExpression {
 
   constructor(public operator: Operator, public expression: IAccessible, public prefix: boolean = true) {}
 
-  public eval(): IValue {
+  public eval(): IECMAScriptLanguageType {
     const value = this.expression.eval()
     let result
     switch (this.operator) {
       case Operator.INCREMENT: {
-        result = new NumberValue(value.asNumber() + 1)
+        result = new NumberType(value.asNumber() + 1)
         break
       }
       case Operator.DECREMENT: {
-        result = new NumberValue(value.asNumber() - 1)
+        result = new NumberType(value.asNumber() - 1)
         break
       }
       default:

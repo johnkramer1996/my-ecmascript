@@ -1,4 +1,4 @@
-import ECStack from 'parser/lib/CallStack'
+import { CallStack } from 'parser/lib/CallStack'
 import IStatement from './IStatement'
 import IVisitor from './IVisitor'
 import { VaraibleDeclaration } from './VariableDeclarator'
@@ -20,7 +20,7 @@ export default class Program implements IStatement {
   }
 
   public creation() {
-    ECStack.enter('GLOBAL')
+    CallStack.enter('GLOBAL')
     this.globalExecuteContext()
     this.hosting()
   }

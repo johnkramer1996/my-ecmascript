@@ -1,13 +1,13 @@
 import IStatement from './IStatement'
 import IExpression from './IExpression'
 import IVisitor from './IVisitor'
-import ECStack from 'parser/lib/CallStack'
+import { CallStack } from 'parser/lib/CallStack'
 
 export default class ReturnStatement implements IStatement {
   constructor(public expression: IExpression) {}
 
   public execute(): void {
-    ECStack.setReturn(this.expression.eval())
+    CallStack.setReturn(this.expression.eval())
   }
 
   // public getResult(): IValue {

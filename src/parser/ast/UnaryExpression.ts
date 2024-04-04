@@ -1,12 +1,12 @@
-import IValue from 'parser/lib/IValue'
-import NumberValue from 'parser/lib/types/NumberValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
+import NumberType from 'parser/lib/types/NumberValue'
 import IExpression from './IExpression'
 import OperationIsNotSupportedException from 'exceptions/OperationIsNotSupportedException'
 import IVisitor from './IVisitor'
-import Types from 'parser/lib/types/Types'
-import StringValue from 'parser/lib/types/StringValue'
-import BooleanValue from 'parser/lib/types/BooleanValue'
-import { ObjectValue } from 'parser/lib/types/ObjectValue'
+import ECMAScriptLanguageTypes from 'parser/lib/types/Types'
+import StringType from 'parser/lib/types/StringValue'
+import { BooleanType } from 'parser/lib/types/BooleanValue'
+import { ObjectType } from 'parser/lib/types/ObjectValue'
 import MemberExpression from './MemberExpression'
 
 enum Operator {
@@ -25,24 +25,24 @@ export default class UnaryExpression implements IExpression {
 
   constructor(public operator: Operator, public expression: IExpression) {}
 
-  public eval(): IValue {
+  public eval(): IECMAScriptLanguageType {
     const value = this.expression.eval()
     switch (this.operator) {
       case Operator.DELETE:
         if (!(this.expression instanceof MemberExpression))
           throw new Error('Delete of an unqualified identifier in strict mode.')
-        return this.expression.delete() ? BooleanValue.TRUE : BooleanValue.FALSE
+        return this.expression.delete() ? BooleanType.TRUE : BooleanType.FALSE
       case Operator.TYPEOF:
         //TODO: TYPEOF NULL == OBJECT
-        return new StringValue(value.type())
+        return new StringType(value.type())
       case Operator.PLUS:
-        return new NumberValue(value.asNumber())
+        return new NumberType(value.asNumber())
       case Operator.NEGATION:
-        return new NumberValue(-value.asNumber())
+        return new NumberType(-value.asNumber())
       case Operator.LOGICAL_NOT:
-        return new NumberValue(Boolean(value.asNumber()) ? 1 : 0)
+        return new NumberType(Boolean(value.asNumber()) ? 1 : 0)
       case Operator.BITWISE_NOT:
-        return new NumberValue(~value.asNumber())
+        return new NumberType(~value.asNumber())
       default:
         throw new OperationIsNotSupportedException('Operation ' + this.operator + ' is not supported')
     }

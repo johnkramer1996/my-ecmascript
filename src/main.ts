@@ -2,12 +2,15 @@ import Lexer from 'parser/Lexer'
 import Parser from 'parser/Parser'
 
 const program = `
-log NaN
-log undefined
-
-log Object(123)
-
+function name() {
+  log 123
+}
+log name()
 `
+
+// const a = {a: 123, __proto__: {b: 123}}
+// log a.b
+
 // function Name() {
 //   super()
 // }
@@ -33,6 +36,8 @@ log Object(123)
 //     super()
 //   }
 // }
+
+export const EMPTY = 'EMPTY '
 
 const lexer = new Lexer(program)
 const tokens = lexer.tokenize()

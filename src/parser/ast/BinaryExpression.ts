@@ -1,10 +1,10 @@
-import IValue from 'parser/lib/IValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
 import IExpression from './IExpression'
 import OperationIsNotSupportedException from 'exceptions/OperationIsNotSupportedException'
-import NumberValue from 'parser/lib/types/NumberValue'
+import NumberType from 'parser/lib/types/NumberValue'
 import IVisitor from './IVisitor'
 import TokenType from 'parser/TokenType'
-import StringValue from 'parser/lib/types/StringValue'
+import StringType from 'parser/lib/types/StringValue'
 import ConditionalExpression from './ConditionalExpression'
 
 export enum BinaryOperator {
@@ -26,16 +26,16 @@ export default class BinaryExpression implements IExpression {
 
   constructor(public operator: BinaryOperator, public left: IExpression, public right: IExpression) {}
 
-  public eval(): IValue {
+  public eval(): IECMAScriptLanguageType {
     const leftValue = this.left.eval()
     const rightValue = this.right.eval()
 
-    if (leftValue instanceof StringValue || rightValue instanceof StringValue) {
+    if (leftValue instanceof StringType || rightValue instanceof StringType) {
       const leftString = leftValue.asString()
       switch (this.operator) {
         case BinaryOperator.ADD:
         default:
-          return new StringValue(leftString + rightValue.asString())
+          return new StringType(leftString + rightValue.asString())
       }
     }
 
@@ -83,7 +83,7 @@ export default class BinaryExpression implements IExpression {
       }
     })()
 
-    return new NumberValue(result)
+    return new NumberType(result)
   }
 
   public accept(visitor: IVisitor): void {

@@ -1,4 +1,4 @@
-import IValue from 'parser/lib/IValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
 import { INode } from './INode'
 
 export function isIExpression(node: any): node is IExpression {
@@ -6,5 +6,5 @@ export function isIExpression(node: any): node is IExpression {
 }
 
 export default interface IExpression extends INode {
-  eval(): IValue
+  eval(): IECMAScriptLanguageType
 }

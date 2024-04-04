@@ -1,6 +1,6 @@
-import IValue from 'parser/lib/IValue'
-import BooleanValue from 'parser/lib/types/BooleanValue'
-import NumberValue from 'parser/lib/types/NumberValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
+import { BooleanType } from 'parser/lib/types/BooleanValue'
+import NumberType from 'parser/lib/types/NumberValue'
 import IExpression from './IExpression'
 import OperationIsNotSupportedException from 'exceptions/OperationIsNotSupportedException'
 import IVisitor from './IVisitor'
@@ -23,15 +23,15 @@ export default class ConditionalExpression implements IExpression {
 
   constructor(public operator: ConditionOperator, public left: IExpression, public right: IExpression) {}
 
-  public eval(): IValue {
+  public eval(): IECMAScriptLanguageType {
     const leftValue = this.left.eval()
     const rightValue = this.right.eval()
 
     //TODO: IF TYPE === NOT CORVERSION
     //TODO: ADD BITWISE OPERATORS
 
-    const isBoolean = leftValue instanceof BooleanValue || rightValue instanceof BooleanValue
-    const isNumber = leftValue instanceof NumberValue || rightValue instanceof NumberValue
+    const isBoolean = leftValue instanceof BooleanType || rightValue instanceof BooleanType
+    const isNumber = leftValue instanceof NumberType || rightValue instanceof NumberType
     const compareString = isNumber ? 0 : leftValue.asString().localeCompare(rightValue.asString())
     const number1 = isBoolean || isNumber ? leftValue.asNumber() : compareString
     const number2 = isBoolean || isNumber ? rightValue.asNumber() : 0
@@ -63,7 +63,7 @@ export default class ConditionalExpression implements IExpression {
       }
     })()
 
-    return BooleanValue[result ? 'TRUE' : 'FALSE']
+    return BooleanType[result ? 'TRUE' : 'FALSE']
   }
 
   public accept(visitor: IVisitor): void {

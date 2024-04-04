@@ -1,26 +1,26 @@
-import IValue from '../IValue'
-import Types from './Types'
+import IECMAScriptLanguageType from '../IValue'
+import ECMAScriptLanguageTypes from './Types'
 import Value from '../Value'
 
-export default class NullValue extends Value {
-  public static NULL = new NullValue()
+export default class NullType extends Value {
+  public static NULL = new NullType()
 
   constructor() {
-    super(null, Types.null)
+    super(null, ECMAScriptLanguageTypes.null)
   }
 
-  public compareTo(o: IValue): number {
+  public compareTo(o: IECMAScriptLanguageType): number {
     return this.asString().localeCompare(o.asString())
   }
 
-  public equals(value: IValue): boolean {
+  public equals(value: IECMAScriptLanguageType): boolean {
     if (this === value) return true
-    if (!(value instanceof NullValue)) return false
+    if (!(value instanceof NullType)) return false
     return this.value === value.value
   }
 
   public type(): string {
-    return Types[Types.object]
+    return ECMAScriptLanguageTypes[ECMAScriptLanguageTypes.object]
   }
 
   public asNumber(): number {

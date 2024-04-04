@@ -1,27 +1,27 @@
 import IExpression from './IExpression'
 import IVisitor from './IVisitor'
 import { IAccessible } from './IAccessible'
-import IValue from 'parser/lib/IValue'
+import IECMAScriptLanguageType from 'parser/lib/IValue'
 import { Variables } from 'parser/lib/Variables'
-import UndefinedValue from 'parser/lib/types/UndefinedValue'
+import UndefinedType from 'parser/lib/types/UndefinedValue'
 
 export class AssignmentPattern implements IExpression, IAccessible {
   constructor(public identifier: IAccessible, public valueExpr: IExpression) {}
 
-  public eval(): IValue {
+  public eval(): IECMAScriptLanguageType {
     return this.get()
   }
 
-  public get(): IValue {
+  public get(): IECMAScriptLanguageType {
     return this.identifier.eval()
   }
 
-  public set(value: IValue): IValue {
+  public set(value: IECMAScriptLanguageType): IECMAScriptLanguageType {
     return this.define(value), value
   }
 
-  public define(value: IValue): void {
-    this.identifier.define(value === UndefinedValue.UNDEFINED ? this.getValueExpr().eval() : value)
+  public define(value: IECMAScriptLanguageType): void {
+    this.identifier.define(value === UndefinedType.UNDEFINED ? this.getValueExpr().eval() : value)
   }
 
   public hoisting(kind: string): void {

@@ -1,98 +1,160 @@
 import IStatement from 'parser/ast/IStatement'
-import Value from '../Value'
-import Types from './Types'
 import TypeException from 'exceptions/TypeException'
-import IValue from '../IValue'
-import { Scope, Variables } from '../Variables'
-import UndefinedValue from './UndefinedValue'
-import ECStack from '../CallStack'
+import { ObjectType } from './ObjectValue'
+import IECMAScriptLanguageType from '../IValue'
+import { Scope, This, Variables } from '../Variables'
+import UndefinedType from './UndefinedValue'
+import {
+  CallStack,
+  CompletionRecord,
+  EnvironmentRecord,
+  ExecutionContextStack,
+  PrivateEnvironmentRecord,
+  Realm,
+} from '../CallStack'
 import { Params } from 'parser/ast/Params'
 import { Identifier } from 'parser/ast/Identifier'
-import { MyObject, ObjectValue } from './ObjectValue'
+import { Assert } from '../spec/spec'
 import Function from '../Function'
-import { ClassDeclaration } from 'parser/ast/ClassDeclarationStatement'
+import ArrayValue from './ArrayValue'
+import { EMPTY } from 'main'
+import {
+  ClassFieldDefinitionRecord,
+  PrivateElements,
+  PrivateName,
+  PrepareForOrdinaryCall,
+  OrdinaryCallBindThis,
+  Completion,
+  OrdinaryCallEvaluateBody,
+} from '../spec/spec'
 
-export class UserDefinedFunction implements Function {
-  public scope: Scope
-  private value: ObjectValue
+// export class UserDefinedFunction implements Function {
+//   constructor(
+//     public body: IStatement,
+//     public params = new Params(),
+//     public id: Identifier | null,
+//     public name: string,
+//   ) {}
+
+//   public call(...values: IECMAScriptLanguageType[]): IECMAScriptLanguageType {
+//     this.hoisting()
+//     this.setArguments(values)
+//     this.body.execute()
+//     return CallStack.getReturn()
+//   }
+
+//   private hoisting(): void {
+//     for (const param of this.getParams()) param.hoisting('var')
+//     this.id && this.id.hoisting('var')
+//   }
+
+//   private setArguments(values: IECMAScriptLanguageType[]) {
+//     this.getParams().forEach((arg, i) => arg.define(values[i] ?? UndefinedType.UNDEFINED))
+//     this.id?.define(new FunctionObjectType(this))
+//   }
+
+//   private getParams() {
+//     return this.params.values
+//   }
+
+//   public toString(): string {
+//     return `[function ${this.name}]`
+//   }
+// }
+
+export class FunctionObjectType extends ObjectType implements IECMAScriptLanguageType {
+  protected scope: Scope
+  F: FunctionObjectType
+  '[[Environment]]': EnvironmentRecord
+  '[[PrivateEnvironment]]': PrivateEnvironmentRecord
+  '[[FormalParameters]]': Params
+  '[[ECMAScriptCode]]': IStatement
+  '[[ConstructorKind]]': 'BASE' | 'DERIVED'
+  '[[Realm]]' = new Realm()
+  '[[ScriptOrModule]]': any
+  '[[ThisMode]]': 'LEXICAL' | 'STRICT' | 'GLOBAL' = 'STRICT'
+  '[[Strict]]': boolean
+  '[[HomeObject]]': ObjectType
+  '[[SourceText]]': string
+  '[[Fields]]': ClassFieldDefinitionRecord[]
+  '[[PrivateMethods]]': PrivateElements[]
+  '[[ClassFieldInitializerName]]': string | symbol | PrivateName | typeof EMPTY
+  '[[IsClassConstructor]]': boolean
 
   constructor(
-    public body: IStatement,
-    public params = new Params(),
-    public id: Identifier | null,
-    public name: string,
+    body?: IStatement,
+    prototype = new ObjectType(),
+    __proto__: IECMAScriptLanguageType | null = ObjectType.FunctionPrototype,
   ) {
+    super(__proto__)
+    prototype['[[Set]]']('constructor', this)
+    this['[[Set]]']('prototype', prototype)
     this.scope = Variables.scope
-
-    const prototype = new ObjectValue(ObjectValue.ObjectPrototype)
-    prototype.set('constructor', new FunctionValue(this))
-
-    this.value = new ObjectValue(ObjectValue.FunctionPrototype)
-    this.value.set('prototype', prototype)
+    this.F = this
+    this['[[ECMAScriptCode]]'] = body ?? {
+      execute() {
+        return UndefinedType.UNDEFINED
+      },
+      accept(visitor) {},
+    }
   }
 
-  public getValue(): ObjectValue {
-    return this.value
+  public getScope(): Scope {
+    return this.scope
   }
 
-  public call(...values: IValue[]): IValue {
-    this.hoisting()
-    this.setArguments(values)
-    this.body.execute()
-    return ECStack.getReturn()
+  // 10.2.1 [[Call]] ( thisArgument, argumentsList )
+  public '[[Call]]'(thisArgument: IECMAScriptLanguageType, argumentsList: IECMAScriptLanguageType[]): CompletionRecord {
+    // 1. Let callerContext be the running execution context.
+    const collerContext = ExecutionContextStack.runningExecutionContext()
+    // 2. Let calleeContext be PrepareForOrdinaryCall(F, undefined).
+    const calleeContext = PrepareForOrdinaryCall(this.F, undefined)
+    // 3. Assert: calleeContext is now the running execution context.
+    Assert(ExecutionContextStack.runningExecutionContext() === calleeContext)
+    // 4. If F.[[IsClassConstructor]] is true, then
+    if (this.F['[[IsClassConstructor]]'] === true) {
+      // a. Let error be a newly created TypeError object.
+      const error = new TypeError()
+      // b. NOTE: error is created in calleeContext with F's associated Realm Record.
+      // c. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
+      ExecutionContextStack.pop()
+      // d. Return ThrowCompletion(error).
+      return CompletionRecord.ThrowCompletion(error)
+    }
+    // 5. Perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
+    OrdinaryCallBindThis(this.F, calleeContext, thisArgument)
+    // 6. Let result be Completion(OrdinaryCallEvaluateBody(F, argumentsList)).
+    const result = Completion(OrdinaryCallEvaluateBody(this.F, argumentsList))
+    // 7. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
+    ExecutionContextStack.pop()
+    // 8. If result is a return completion, return result.[[Value]].
+    // if (result instanceof CompletionRecord)
+    return CompletionRecord.NormalCompletion(result['[[Value]]'])
+    // 9. ReturnIfAbrupt(result).
+    // ReturnIfAbrupt(result)
+    // // 10. Return undefined.
+    // return UndefinedType.UNDEFINED
   }
 
-  private hoisting(): void {
-    for (const param of this.getParams()) param.hoisting('var')
-    this.id && this.id.hoisting('var')
-  }
-
-  private setArguments(values: IValue[]) {
-    this.getParams().forEach((arg, i) => arg.define(values[i] ?? UndefinedValue.UNDEFINED))
-    this.id?.define(new FunctionValue(this))
-  }
-
-  private getParams() {
-    return this.params.values
-  }
-
-  public toString(): string {
-    return `[function ${this.name}]`
-  }
-}
-
-export class FunctionValue extends Value<Function> implements IValue {
-  constructor(public value: Function) {
-    super(value, Types.function)
-  }
-
-  public get(key: string) {
-    return this.value.getValue().get(key)
-  }
-
-  public set(key: string, value: IValue) {
-    return this.value.getValue().set(key, value)
-  }
-
-  public compareTo(o: IValue): number {
-    return this.asString().localeCompare(o.asString())
-  }
-
-  public equals(value: IValue): boolean {
-    if (this === value) return true
-    if (!(value instanceof FunctionValue)) return false
-    return this.value === value.value
-  }
+  // public getName(): string {
+  //   return this.func.name ?? ''
+  // }
 
   public asNumber(): number {
     throw new TypeException('Cannot cast function to number')
   }
 
   public asString(): string {
-    return String(this.value)
+    return `[function name]`
   }
+}
 
-  public toString(): string {
-    return this.asString()
+export class ConstructorValue extends FunctionObjectType implements IECMAScriptLanguageType {
+  public '[[construct]]'(this_: ObjectType, values: IECMAScriptLanguageType[]): CompletionRecord {
+    return this['[[Call]]'](this, values)
+    // Variables.bindThis(this_)
+    // const result = this.func.call(...values)
+    // const isObject = result instanceof ObjectType || result instanceof ArrayValue
+    // return isObject ? result : this_
   }
 }

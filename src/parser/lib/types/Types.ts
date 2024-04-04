@@ -1,13 +1,11 @@
-enum Types {
-  object = 0,
-  number = 1,
-  string = 2,
-  array = 3,
-  MAP = 4,
-  function = 5,
-  boolean = 6,
-  null = 7,
-  undefined = 8,
+enum ECMAScriptLanguageTypes {
+  undefined = 1,
+  null = 2,
+  boolean = 3,
+  string = 4,
+  symbol = 5,
+  number = 6,
+  object = 7,
 }
 
-export default Types
+export default ECMAScriptLanguageTypes

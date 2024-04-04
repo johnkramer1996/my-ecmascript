@@ -1,77 +1,142 @@
 import TypeException from 'exceptions/TypeException'
-import IValue from '../IValue'
+import IECMAScriptLanguageType from '../IValue'
 import Value from '../Value'
-import UndefinedValue from './UndefinedValue'
-import NumberValue from './NumberValue'
-import Types from './Types'
-import StringValue from './StringValue'
-import BooleanValue from './BooleanValue'
-import { FunctionValue } from './FunctionValue'
-import { Variables } from '../Variables'
+import UndefinedType from './UndefinedValue'
+import NumberType from './NumberValue'
+import ECMAScriptLanguageTypes from './Types'
+import StringType from './StringValue'
+import NullType from './NullValue'
+import { CompletionRecord } from '../CallStack'
+import {
+  PropertyDescriptor,
+  OrdinaryGetPrototypeOf,
+  OrdinarySetPrototypeOf,
+  OrdinaryIsExtensible,
+  OrdinaryPreventExtensions,
+  OrdinaryGetOwnProperty,
+  OrdinaryDefineOwnProperty,
+  OrdinaryHasProperty,
+  OrdinaryGet,
+} from '../spec/spec'
 
-export type MyObject = { [index: string]: IValue }
+export type MyObject = { [index: string | symbol]: IECMAScriptLanguageType }
 
-export class ObjectValue extends Value<MyObject> implements Iterable<[string, IValue]> {
-  static ObjectPrototype = new ObjectValue(null)
-  static FunctionPrototype = new ObjectValue(ObjectValue.ObjectPrototype, { bind: new NumberValue(123) })
-  static NumberPrototype = new ObjectValue()
-  static StringPrototype = new ObjectValue()
-  static BooleanPrototype = new ObjectValue()
-  private __proto__: ObjectValue | null = null
+export class ObjectType extends Value<MyObject> implements Iterable<[string, IECMAScriptLanguageType]> {
+  static ObjectPrototype = new ObjectType(null)
+  static FunctionPrototype = new ObjectType(ObjectType.ObjectPrototype, { bind: new NumberType(123) })
+  static NumberPrototype = new ObjectType()
+  static StringPrototype = new ObjectType()
+  private '[[prototype]]': ObjectType | NullType = NullType.NULL
+  private '[[Extensible]]' = false
+  public propertyDescriptors: { [key: string]: PropertyDescriptor } = {}
 
-  constructor(__proto__: IValue | null = ObjectValue.ObjectPrototype, value: MyObject = {}) {
-    super(value, Types.object)
-    if (__proto__ instanceof ObjectValue) this.__proto__ = __proto__
+  constructor(__proto__: IECMAScriptLanguageType | null = ObjectType.ObjectPrototype, value: MyObject = {}) {
+    super(value, ECMAScriptLanguageTypes.object)
+    // if (__proto__ instanceof ObjectType) this['[[prototype]]'] = __proto__
+  }
+
+  '[[GetPrototypeOf]]'(): ObjectType | NullType {
+    return OrdinaryGetPrototypeOf(this)
+  }
+
+  '[[SetPrototypeOf]]'(V: ObjectType | NullType): boolean {
+    return OrdinarySetPrototypeOf(this, V)
+  }
+
+  '[[IsExtensible]]'(): boolean {
+    return OrdinaryIsExtensible(this)
+  }
+
+  '[[PreventExtensions]]'(): boolean {
+    return OrdinaryPreventExtensions(this)
+  }
+
+  '[[GetOwnProperty]]'(propertyKey: string): PropertyDescriptor | UndefinedType {
+    // If the Type of the return value is Property Descriptor, the return value must be a fully populated Property Descriptor.
+
+    return OrdinaryGetOwnProperty(this, propertyKey)
+  }
+
+  '[[DefineOwnProperty]]'(propertyKey: string, propertyDescriptor: PropertyDescriptor): boolean {
+    return OrdinaryDefineOwnProperty(this, propertyKey, propertyDescriptor)
+  }
+
+  '[[HasProperty]]'(propertyKey: string): boolean {
+    return OrdinaryHasProperty(this, propertyKey)
+  }
+
+  // 10.1.8 [[Get]] ( P, Receiver )
+  '[[Get]]'(propertyKey: string, Receiver?: any): CompletionRecord {
+    return OrdinaryGet(this, propertyKey, Receiver)
+  }
+
+  '[[Set]]'(propertyKey: string, value: IECMAScriptLanguageType, Receiver?: any): boolean {
+    const propertyDescriptor = this.propertyDescriptors[propertyKey]
+    if (propertyDescriptor?.['[[Writable]]'] === false) return propertyDescriptor['[[Value]]'] === value
+    // if (propertyDescriptor?.['[[Set]]'] === UndefinedValue.UNDEFINED) return false
+    const newProp = new PropertyDescriptor({ '[[Value]]': value, '[[Writable]]': true, '[[Configurable]]': true })
+    this.propertyDescriptors[propertyKey] = newProp
+
+    return true
+  }
+
+  '[[Delete]]'(propertyKey: string): boolean {
+    const propertyDescriptor = this.propertyDescriptors[propertyKey]
+    if (!propertyDescriptor) return false
+    if (propertyDescriptor['[[Writable]]'] === false) return false
+    // if (propertyDescriptor['[[Set]]'] === UndefinedValue.UNDEFINED) return false
+    delete this.propertyDescriptors[propertyKey]
+    return true
+  }
+
+  '[[OwnPropertyKeys]]'(): boolean {
+    return true
+  }
+
+  // public get(propertyKey: string): IValue {
+  //   if (!(this['[[GetOwnProperty]]'](propertyKey) instanceof UndefinedValue)) return this['[[Get]]'](propertyKey)
+  //   if (this['[[prototype]]'] instanceof NullValue) return UndefinedValue.UNDEFINED
+  //   if (propertyKey === '__proto__') return this['[[prototype]]']
+  //   return this['[[prototype]]'].get(propertyKey)
+  // }
+
+  // public set(propertyKey: string, value: IECMAScriptLanguageType): boolean {
+  //   if (propertyKey === '__proto__') {
+  //     if (!(value instanceof ObjectType)) return false
+  //     this['[[prototype]]'] = value
+  //     return true
+  //   }
+  //   return this['[[Set]]'](propertyKey, value)
+  // }
+
+  public delete(propertyKey: string): boolean {
+    return this['[[Delete]]'](propertyKey)
   }
 
   public size(): number {
     return Object.keys(this.value).length
   }
 
-  public get(property: string): IValue {
-    if (this.hasOwnProperty(property)) return this.value[property] as IValue
-    if (!this.__proto__) return UndefinedValue.UNDEFINED
-    if (property === '__proto__') return this.__proto__
-    return this.__proto__.get(property)
-  }
-
-  private hasOwnProperty(key: string) {
-    return this.value.hasOwnProperty(key)
-  }
-
-  public set(property: string, value: IValue): void {
-    if (property === '__proto__') {
-      if (!(value instanceof ObjectValue)) return
-      this.__proto__ = value
-      return
-    }
-    this.value[property] = value
-  }
-
-  public delete(property: string): boolean {
-    return delete this.value[property]
-  }
-
-  public compareTo(o: IValue): number {
-    if (o instanceof ObjectValue) return this.size() >= o.size() ? this.size() - o.size() : o.size() - this.size()
+  public compareTo(o: IECMAScriptLanguageType): number {
+    if (o instanceof ObjectType) return this.size() >= o.size() ? this.size() - o.size() : o.size() - this.size()
     return this.asString().localeCompare(o.asString())
   }
 
-  public [Symbol.iterator](): Iterator<[string, IValue]> {
+  public [Symbol.iterator](): Iterator<[string, IECMAScriptLanguageType]> {
     // return this.value.entries()
     const entries = Object.entries(this.value)
     const length = entries.length
     let index = 0
     return {
-      next(): IteratorResult<[string, IValue]> {
+      next(): IteratorResult<[string, IECMAScriptLanguageType]> {
         return index < length ? { value: entries[index++], done: false } : { value: entries[index], done: true }
       },
     }
   }
 
-  public equals(value: IValue): boolean {
+  public equals(value: IECMAScriptLanguageType): boolean {
     if (this === value) return true
-    if (!(value instanceof ObjectValue)) return false
+    if (!(value instanceof ObjectType)) return false
     return this.value === value.value
   }
 
@@ -80,14 +145,16 @@ export class ObjectValue extends Value<MyObject> implements Iterable<[string, IV
   }
 
   public asString(): string {
-    const entries = Object.entries(this.value)
-      .map(([key, value]) => {
+    console.log(this.propertyDescriptors)
+    const entries = Object.entries(this.propertyDescriptors)
+      .map(([key, descriptor]) => {
+        const value = descriptor['[[Value]]']
         const primitive =
-          value instanceof NumberValue
+          value instanceof NumberType
             ? value.asNumber()
-            : value instanceof StringValue
+            : value instanceof StringType
             ? `"${value}"`
-            : value instanceof ObjectValue && value === this
+            : value instanceof ObjectType && (value === this || Object.values(value.raw()).some((v) => v === this))
             ? '[Circular *1]'
             : value.asString()
         return `"${key}": ${primitive}`
@@ -97,42 +164,16 @@ export class ObjectValue extends Value<MyObject> implements Iterable<[string, IV
   }
 }
 
-export class ClassInstance extends ObjectValue {
-  private active = false
-
-  constructor(__proto__: IValue | null = ObjectValue.ObjectPrototype, value: MyObject = {}, private className: string) {
+export class ClassInstance extends ObjectType {
+  constructor(
+    __proto__: IECMAScriptLanguageType | null = ObjectType.ObjectPrototype,
+    value: MyObject = {},
+    private className: string,
+  ) {
     super(__proto__, value)
   }
 
-  hasAccess() {
-    if (!this.active) {
-      throw new Error(
-        "Must call super constructor in derived class before accessing 'this' or returning from derived constructor",
-      )
-    }
-  }
-
-  activate() {
-    this.active = true
-  }
-
-  public get(property: string): IValue {
-    this.hasAccess()
-    return super.get(property)
-  }
-
-  public set(property: string, value: IValue): void {
-    this.hasAccess()
-    return super.set(property, value)
-  }
-
-  public delete(property: string): boolean {
-    this.hasAccess()
-    return super.delete(property)
-  }
-
   public asString() {
-    this.hasAccess()
     return `${this.className} ${super.asString()}`
   }
 }

@@ -1,7 +1,7 @@
 import { Variables } from 'parser/lib/Variables'
 import IExpression from './IExpression'
 import IStatement from './IStatement'
-import UndefinedValue from 'parser/lib/types/UndefinedValue'
+import UndefinedType from 'parser/lib/types/UndefinedValue'
 import IVisitor from './IVisitor'
 import { IAccessible } from './IAccessible'
 
@@ -9,7 +9,7 @@ export class VariableDeclarator implements IStatement {
   constructor(public id: IAccessible, public init: IExpression | null) {}
 
   public execute(): void {
-    this.id.define(this.init?.eval() || UndefinedValue.UNDEFINED)
+    this.id.define(this.init?.eval() || UndefinedType.UNDEFINED)
   }
 
   public hoisting(kind: string): void {
