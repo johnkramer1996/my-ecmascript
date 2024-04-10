@@ -1,15 +1,15 @@
-import { CallStack } from 'parser/lib/CallStack'
 import IStatement from './IStatement'
 import IVisitor from './IVisitor'
-import { VaraibleDeclaration } from './VariableDeclarator'
+import { LexicalDeclaration } from './VariableDeclarator'
 import { FunctionDeclarationStatement } from './FunctionDeclarationStatement'
-import { Variables } from 'parser/lib/Variables'
+import { InitializeHostDefinedRealm } from 'parser/lib/spec/9.6'
 
 export default class Program implements IStatement {
   constructor(public body: IStatement[]) {}
 
   public execute(): void {
-    this.creation()
+    InitializeHostDefinedRealm()
+    this.hosting()
     for (const statement of this.body) {
       try {
         statement.execute()
@@ -19,19 +19,9 @@ export default class Program implements IStatement {
     }
   }
 
-  public creation() {
-    CallStack.enter('GLOBAL')
-    this.globalExecuteContext()
-    this.hosting()
-  }
-
-  private globalExecuteContext() {
-    Variables.init()
-  }
-
   private hosting() {
     for (const statement of this.body) {
-      if (statement instanceof VaraibleDeclaration || statement instanceof FunctionDeclarationStatement) {
+      if (statement instanceof LexicalDeclaration || statement instanceof FunctionDeclarationStatement) {
         statement.hoisting()
       }
     }

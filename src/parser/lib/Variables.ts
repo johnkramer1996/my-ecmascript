@@ -39,16 +39,16 @@ export class Variables {
 
     this.globalScope = this.scope = new Scope(null, null, null, globalObject)
 
-    ObjectType.ObjectPrototype['[[Set]]'](
-      'toString',
-      new FunctionObjectType({
-        execute(...args) {
-          const _this = Variables.get('this')
-          return new StringType(`[${_this.type()} object]`)
-        },
-        accept(visitor) {},
-      }),
-    )
+    // ObjectType.ObjectPrototype['[[Set]]'](
+    //   'toString',
+    //   new FunctionObjectType({
+    //     execute(...args) {
+    //       const _this = Variables.get('this')
+    //       return new StringType(`[${_this.type()} object]`)
+    //     },
+    //     accept(visitor) {},
+    //   }),
+    // )
 
     const { Object_, Function_, Number_, String_, Boolean_ } = initFundamentalObjects()
 
@@ -65,10 +65,6 @@ export class Variables {
 
   public static getThis(): This {
     return this.scope.this_
-  }
-
-  public static getScope(): Scope {
-    return this.scope
   }
 
   public static enterScope(callee?: FunctionObjectType | ClassDeclaration, parent?: Scope): void {
@@ -117,7 +113,7 @@ export class Variables {
 
   public static hoisting(key: string, kind: string, val: IECMAScriptLanguageType = UndefinedType.UNDEFINED) {
     const variable = this.scope.variables.get(key)
-    if (variable?.value === uninitialized) {
+    if (variable && ['let', 'const'].includes(kind)) {
       throw new SyntaxError(`Identifier '${key}' has already been declared. `)
     }
     const value = kind === 'func' ? val : kind === 'var' ? UndefinedType.UNDEFINED : uninitialized

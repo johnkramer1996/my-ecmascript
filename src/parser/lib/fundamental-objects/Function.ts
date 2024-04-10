@@ -1,13 +1,4 @@
-import Lexer from 'parser/Lexer'
-import IECMAScriptLanguageType from '../IValue'
 import { FunctionObjectType } from '../types/FunctionValue'
-import NumberType from '../types/NumberValue'
-import { ClassInstance, ObjectType } from '../types/ObjectValue'
-import Parser from 'parser/Parser'
-import { Variables } from '../Variables'
-import UndefinedType from '../types/UndefinedValue'
-import { initObject } from './Object'
-import { initBoolean } from './Boolean'
 
 export const initFunction = () => {
   new FunctionObjectType()
@@ -22,9 +13,9 @@ export const initFunction = () => {
   //   return new FunctionObjectType({
   //     call: () => {
   //       try {
-  //         Variables.enterScope(undefined, Variables.globalScope)
+  //         1.enterScope(undefined, 1.globalScope)
   //         ast.execute()
-  //         Variables.exitScope()
+  //         1.exitScope()
   //       } catch (e) {
   //         console.error(e)
   //       }

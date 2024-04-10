@@ -1,8 +1,6 @@
 import IECMAScriptLanguageType from '../IValue'
 import Value from '../Value'
-import { ConstructorValue, FunctionObjectType } from './FunctionValue'
 import { ObjectType } from './ObjectValue'
-import StringType from './StringValue'
 import ECMAScriptLanguageTypes from './Types'
 
 export class BooleanType extends Value<boolean> {
@@ -37,13 +35,13 @@ export class BooleanType extends Value<boolean> {
 }
 
 export const BooleanPrototype = new ObjectType(ObjectType.ObjectPrototype, {
-  toString: new FunctionObjectType({
-    execute() {
-      return new StringType('boolean prototype')
-    },
-    accept(visitor) {},
-    toString() {
-      return ''
-    },
-  }),
+  // toString: new FunctionObjectType({
+  //   execute() {
+  //     return new StringType('boolean prototype')
+  //   },
+  //   accept(visitor) {},
+  //   toString() {
+  //     return ''
+  //   },
+  // }),
 })

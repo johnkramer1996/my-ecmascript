@@ -4,11 +4,11 @@ import { IAccessible } from './IAccessible'
 import IECMAScriptLanguageType from 'parser/lib/IValue'
 import ArrayValue from 'parser/lib/types/ArrayValue'
 import { ObjectType } from 'parser/lib/types/ObjectValue'
-import { FunctionObjectType } from 'parser/lib/types/FunctionValue'
 import UndefinedType from 'parser/lib/types/UndefinedValue'
 import NumberType from 'parser/lib/types/NumberValue'
 import StringType from 'parser/lib/types/StringValue'
 import { BooleanType } from 'parser/lib/types/BooleanValue'
+import { getNC } from 'parser/lib/spec/6.2'
 
 export default class MemberExpression implements IExpression, IAccessible {
   private objectValue!: IECMAScriptLanguageType
@@ -28,7 +28,7 @@ export default class MemberExpression implements IExpression, IAccessible {
       if (!this.optional) throw new Error(`Cannot get properties of undefined ${this.propertyValue.asString()}`)
       return object
     }
-    const result = object['[[Get]]'](this.propertyValue.asString())['[[Value]]']
+    const result = getNC(object['[[Get]]'](this.propertyValue.asString()))['[[Value]]']
     return result
   }
 
@@ -47,7 +47,7 @@ export default class MemberExpression implements IExpression, IAccessible {
     const object = this.getObject(this.object.eval())
     if (object instanceof UndefinedType || object instanceof ArrayValue)
       throw new Error(`Cannot delete properties of undefined ${this.propertyValue.asString()}`)
-    return object['[[Delete]]'](this.propertyValue.asString())
+    return getNC(object['[[Delete]]'](this.propertyValue.asString()))['[[Value]]']
   }
 
   public define(value: IECMAScriptLanguageType): IECMAScriptLanguageType {

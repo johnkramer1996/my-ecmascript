@@ -1,16 +1,18 @@
 import IVisitor from './IVisitor'
 import { IAccessible } from './IAccessible'
 import IECMAScriptLanguageType from 'parser/lib/IValue'
-import { Variables } from 'parser/lib/Variables'
 import ArrayValue from 'parser/lib/types/ArrayValue'
 import { BooleanType } from 'parser/lib/types/BooleanValue'
 import IExpression from './IExpression'
+import { ExecutionContextStack } from 'parser/lib/spec/9.4'
+import { getNC } from 'parser/lib/spec/6.2'
 
 export class ArrayPattern implements IExpression, IAccessible, Iterable<IAccessible> {
   constructor(public elements: IAccessible[]) {}
 
   public eval(): IECMAScriptLanguageType {
-    return Variables.get(this.getName())
+    const colleeContext = ExecutionContextStack.runningExecutionContext()
+    return getNC(colleeContext.LexicalEnvironment.GetBindingValue(this.getName(), true))['[[Value]]']
   }
 
   public set(value: IECMAScriptLanguageType): IECMAScriptLanguageType {

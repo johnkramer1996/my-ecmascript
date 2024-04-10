@@ -6,9 +6,12 @@ import NumberType from './NumberValue'
 import ECMAScriptLanguageTypes from './Types'
 import StringType from './StringValue'
 import NullType from './NullValue'
-import { CompletionRecord } from '../CallStack'
+import { RealmRecord } from '../spec/9.3'
+import { CompletionRecord, CompletionRecordWithError } from '../spec/6.2'
+import { List } from '../spec/6.2'
+import { PropertyDescriptor } from '../spec/spec'
+import { BuiltinCallOrConstruct } from '../spec/10.3'
 import {
-  PropertyDescriptor,
   OrdinaryGetPrototypeOf,
   OrdinarySetPrototypeOf,
   OrdinaryIsExtensible,
@@ -17,100 +20,96 @@ import {
   OrdinaryDefineOwnProperty,
   OrdinaryHasProperty,
   OrdinaryGet,
-} from '../spec/spec'
+  OrdinaryDelete,
+  OrdinarySet,
+  OrdinaryOwnPropertyKeys,
+} from '../spec/10.1'
+import { ConstructorValue } from './FunctionValue'
+import { IObject } from '../spec/6.1'
 
-export type MyObject = { [index: string | symbol]: IECMAScriptLanguageType }
+export type MyObject = { [index: PropertyKey]: IECMAScriptLanguageType }
 
-export class ObjectType extends Value<MyObject> implements Iterable<[string, IECMAScriptLanguageType]> {
+export class ObjectType extends Value<MyObject> implements IObject, Iterable<[string, IECMAScriptLanguageType]> {
   static ObjectPrototype = new ObjectType(null)
   static FunctionPrototype = new ObjectType(ObjectType.ObjectPrototype, { bind: new NumberType(123) })
   static NumberPrototype = new ObjectType()
   static StringPrototype = new ObjectType()
-  private '[[prototype]]': ObjectType | NullType = NullType.NULL
-  private '[[Extensible]]' = false
-  public propertyDescriptors: { [key: string]: PropertyDescriptor } = {}
+  public '[[Prototype]]': ObjectType | NullType = NullType.NULL
+  public '[[Extensible]]' = false
+  public '[[PrivateElements]]': List
+  public propertyDescriptors = new Map<PropertyKey, PropertyDescriptor>()
 
   constructor(__proto__: IECMAScriptLanguageType | null = ObjectType.ObjectPrototype, value: MyObject = {}) {
     super(value, ECMAScriptLanguageTypes.object)
-    // if (__proto__ instanceof ObjectType) this['[[prototype]]'] = __proto__
+    // if (__proto__ instanceof ObjectType) this['[[Prototype]]'] = __proto__
+  }
+
+  public set(key: PropertyKey, propertyDescriptor: PropertyDescriptor): void {
+    this.propertyDescriptors.set(key, propertyDescriptor)
+  }
+
+  public get(key: PropertyKey): PropertyDescriptor | undefined {
+    return this.propertyDescriptors.get(key)
+  }
+
+  public has(key: PropertyKey): boolean {
+    return this.propertyDescriptors.has(key)
   }
 
   '[[GetPrototypeOf]]'(): ObjectType | NullType {
     return OrdinaryGetPrototypeOf(this)
   }
 
-  '[[SetPrototypeOf]]'(V: ObjectType | NullType): boolean {
-    return OrdinarySetPrototypeOf(this, V)
+  '[[SetPrototypeOf]]'(V: ObjectType | NullType): CompletionRecordWithError<boolean> {
+    return CompletionRecord.NormalCompletion(OrdinarySetPrototypeOf(this, V))
   }
 
-  '[[IsExtensible]]'(): boolean {
-    return OrdinaryIsExtensible(this)
+  '[[IsExtensible]]'(): CompletionRecordWithError<boolean> {
+    return CompletionRecord.NormalCompletion(OrdinaryIsExtensible(this))
   }
 
-  '[[PreventExtensions]]'(): boolean {
-    return OrdinaryPreventExtensions(this)
+  '[[PreventExtensions]]'(): CompletionRecordWithError<boolean> {
+    return CompletionRecord.NormalCompletion(OrdinaryPreventExtensions(this))
   }
 
-  '[[GetOwnProperty]]'(propertyKey: string): PropertyDescriptor | UndefinedType {
+  '[[GetOwnProperty]]'(propertyKey: PropertyKey): CompletionRecordWithError<PropertyDescriptor | undefined> {
     // If the Type of the return value is Property Descriptor, the return value must be a fully populated Property Descriptor.
 
-    return OrdinaryGetOwnProperty(this, propertyKey)
+    return CompletionRecord.NormalCompletion(OrdinaryGetOwnProperty(this, propertyKey))
   }
 
-  '[[DefineOwnProperty]]'(propertyKey: string, propertyDescriptor: PropertyDescriptor): boolean {
+  '[[DefineOwnProperty]]'(
+    propertyKey: PropertyKey,
+    propertyDescriptor: PropertyDescriptor,
+  ): CompletionRecordWithError<boolean> {
     return OrdinaryDefineOwnProperty(this, propertyKey, propertyDescriptor)
   }
 
-  '[[HasProperty]]'(propertyKey: string): boolean {
+  '[[HasProperty]]'(propertyKey: PropertyKey): CompletionRecordWithError<boolean> {
     return OrdinaryHasProperty(this, propertyKey)
   }
 
   // 10.1.8 [[Get]] ( P, Receiver )
-  '[[Get]]'(propertyKey: string, Receiver?: any): CompletionRecord {
+  '[[Get]]'(propertyKey: PropertyKey, Receiver?: any): CompletionRecordWithError<IECMAScriptLanguageType> {
     return OrdinaryGet(this, propertyKey, Receiver)
   }
 
-  '[[Set]]'(propertyKey: string, value: IECMAScriptLanguageType, Receiver?: any): boolean {
-    const propertyDescriptor = this.propertyDescriptors[propertyKey]
-    if (propertyDescriptor?.['[[Writable]]'] === false) return propertyDescriptor['[[Value]]'] === value
-    // if (propertyDescriptor?.['[[Set]]'] === UndefinedValue.UNDEFINED) return false
-    const newProp = new PropertyDescriptor({ '[[Value]]': value, '[[Writable]]': true, '[[Configurable]]': true })
-    this.propertyDescriptors[propertyKey] = newProp
-
-    return true
+  '[[Set]]'(
+    propertyKey: PropertyKey,
+    value: IECMAScriptLanguageType,
+    Receiver?: any,
+  ): CompletionRecordWithError<boolean> {
+    return OrdinarySet(this, propertyKey, value, Receiver)
   }
 
-  '[[Delete]]'(propertyKey: string): boolean {
-    const propertyDescriptor = this.propertyDescriptors[propertyKey]
-    if (!propertyDescriptor) return false
-    if (propertyDescriptor['[[Writable]]'] === false) return false
-    // if (propertyDescriptor['[[Set]]'] === UndefinedValue.UNDEFINED) return false
-    delete this.propertyDescriptors[propertyKey]
-    return true
+  '[[Delete]]'(propertyKey: PropertyKey): CompletionRecordWithError<boolean> {
+    return CompletionRecord.NormalCompletion(OrdinaryDelete(this, propertyKey))
   }
 
-  '[[OwnPropertyKeys]]'(): boolean {
-    return true
-  }
-
-  // public get(propertyKey: string): IValue {
-  //   if (!(this['[[GetOwnProperty]]'](propertyKey) instanceof UndefinedValue)) return this['[[Get]]'](propertyKey)
-  //   if (this['[[prototype]]'] instanceof NullValue) return UndefinedValue.UNDEFINED
-  //   if (propertyKey === '__proto__') return this['[[prototype]]']
-  //   return this['[[prototype]]'].get(propertyKey)
-  // }
-
-  // public set(propertyKey: string, value: IECMAScriptLanguageType): boolean {
-  //   if (propertyKey === '__proto__') {
-  //     if (!(value instanceof ObjectType)) return false
-  //     this['[[prototype]]'] = value
-  //     return true
-  //   }
-  //   return this['[[Set]]'](propertyKey, value)
-  // }
-
-  public delete(propertyKey: string): boolean {
-    return this['[[Delete]]'](propertyKey)
+  // 10.1.11 [[OwnPropertyKeys]] ( )
+  '[[OwnPropertyKeys]]'(): CompletionRecordWithError<List<IECMAScriptLanguageType>> {
+    // Return OrdinaryOwnPropertyKeys(O).
+    return CompletionRecord.NormalCompletion(OrdinaryOwnPropertyKeys(this))
   }
 
   public size(): number {
@@ -145,10 +144,9 @@ export class ObjectType extends Value<MyObject> implements Iterable<[string, IEC
   }
 
   public asString(): string {
-    console.log(this.propertyDescriptors)
-    const entries = Object.entries(this.propertyDescriptors)
+    const entries = [...this.propertyDescriptors.entries()]
       .map(([key, descriptor]) => {
-        const value = descriptor['[[Value]]']
+        const value = descriptor['[[Value]]'] ?? UndefinedType.UNDEFINED
         const primitive =
           value instanceof NumberType
             ? value.asNumber()
@@ -157,7 +155,7 @@ export class ObjectType extends Value<MyObject> implements Iterable<[string, IEC
             : value instanceof ObjectType && (value === this || Object.values(value.raw()).some((v) => v === this))
             ? '[Circular *1]'
             : value.asString()
-        return `"${key}": ${primitive}`
+        return `"${String(key)}": ${primitive}`
       })
       .join(', ')
     return `{${entries}}`
@@ -175,5 +173,30 @@ export class ClassInstance extends ObjectType {
 
   public asString() {
     return `${this.className} ${super.asString()}`
+  }
+}
+
+// 10.3 Built-in Function Objects
+export class BuiltInFunctionObject extends ObjectType {
+  '[[Realm]]' = new RealmRecord()
+  '[[InitialName]]': string
+
+  constructor() {
+    // %Function.prototype%,
+    super()
+  }
+
+  execute() {}
+
+  // 10.3.1 [[Call]] ( thisArgument, argumentsList )
+  '[[Call]]'(thisArgument: IECMAScriptLanguageType, argumentsList: List): any {
+    // 1. Return ? BuiltinCallOrConstruct(F, thisArgument, argumentsList, undefined).
+    return BuiltinCallOrConstruct(this, thisArgument, argumentsList, undefined)
+  }
+
+  // 10.3.2 [[Construct]] ( argumentsList, newTarget )
+  '[[Construct]]'(argumentsList: List, newTarget: ConstructorValue): any {
+    // 1. Return ? BuiltinCallOrConstruct(F, UNINITIALIZED, argumentsList, newTarget).
+    return BuiltinCallOrConstruct(this, 'UNINITIALIZED', argumentsList, newTarget)
   }
 }

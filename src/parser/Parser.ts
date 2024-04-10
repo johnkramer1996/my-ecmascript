@@ -9,7 +9,7 @@ import Program from './ast/Program'
 import Literal from './ast/Literal'
 import { BlockStatement } from './ast/BlockStatement'
 import AssignmentExpression, { AssignmentOperator } from './ast/AssignmentExpression'
-import { VaraibleDeclaration, VariableDeclarator } from './ast/VariableDeclarator'
+import { LexicalDeclaration, LexicalDeclarator } from './ast/VariableDeclarator'
 import { Identifier } from './ast/Identifier'
 import UpdateExpression from './ast/UpdateExpression'
 import { IAccessible } from './ast/IAccessible'
@@ -25,10 +25,11 @@ import { CallExpression, NewExpression } from './ast/CallExpression'
 import FunctionExpression from './ast/FunctionExpression'
 import ReturnStatement from './ast/ReturnStatement'
 import {
-  ClassDeclarationStatement,
-  KindMethod,
+  ClassDeclarationStatement as ClassDeclaration,
+  ClassTail,
+  ClassElementKind,
   MethodDefinition,
-  PropertyDefinition,
+  FieldDefinition,
   Super,
 } from './ast/ClassDeclarationStatement'
 import MemberExpression from './ast/MemberExpression'
@@ -80,7 +81,7 @@ export default class Parser {
     const statements: IStatement[] = []
     while (!this.match(TokenType.EOF)) {
       try {
-        statements.push(this.statementOrBlock())
+        statements.push(this.statementsAndDeclarations())
         while (this.match(TokenType.SEMIKOLON));
       } catch (e) {
         if (e instanceof ParseException) {
@@ -94,55 +95,12 @@ export default class Parser {
     return new Program(statements)
   }
 
-  public parseFunction(): IStatement {
-    const statements: IStatement[] = []
-    while (!this.match(TokenType.EOF)) {
-      try {
-        statements.push(this.statementOrBlock())
-        while (this.match(TokenType.SEMIKOLON));
-      } catch (e) {
-        if (e instanceof ParseException) {
-          console.error(`${e.name}: ${e.message}`, e.row, e.col)
-        }
-        console.error(e)
-        this.position++
-        return new Program([])
-      }
-    }
-    return new BlockStatement(statements)
-  }
-
-  private statementOrBlock(): IStatement {
-    return this.lookMatch(0, TokenType.LBRACE) ? this.block() : this.statement()
-  }
-
-  private block(): IStatement {
-    const statements: IStatement[] = []
-    this.consume(TokenType.LBRACE)
-    while (!this.match(TokenType.RBRACE)) {
-      statements.push(this.statementOrBlock())
-      while (this.match(TokenType.SEMIKOLON));
-    }
-    return new BlockStatement(statements)
-  }
-
-  private statement(): IStatement {
-    if (this.match(TokenType.LOG)) return new LogStatement(this.expression())
-
-    // TODO:
-    // if (this.match(TokenType.IF)) return this.ifElseStatement()
-    // if (this.match(TokenType.WHILE)) return this.whileStatement()
-    // if (this.match(TokenType.DO)) return this.doWhileStatement()
-    // if (this.match(TokenType.FOR)) return this.forStatement()
-    // if (this.match(TokenType.BREAK)) return new BreakStatement()
-    // if (this.match(TokenType.CONTINUE)) return new ContinueStatement()
-    if (this.match(TokenType.CLASS)) return this.classDeclaration()
-    if (this.match(TokenType.FUNCTION)) return this.functionDeclaration()
-    if (this.match(TokenType.RETURN)) return new ReturnStatement(this.expression())
-    // if (this.match(TokenType.USE)) return new UseStatement(this.expression())
-    // if (this.match(TokenType.DEBUGGER)) return new DebuggerStatement()
-    if (this.lookMatch(0, TokenType.CONST) || this.lookMatch(0, TokenType.LET) || this.lookMatch(0, TokenType.VAR))
-      return this.variableDeclaration()
+  public statementsAndDeclarations(): IStatement {
+    // 14 ECMAScript Language: Statements and Declarations
+    const statement = this.statement()
+    if (statement) return statement
+    const declaration = this.declaration()
+    if (declaration) return declaration
 
     try {
       return new ExpressionStatement(this.expression())
@@ -154,58 +112,156 @@ export default class Parser {
     }
   }
 
-  public variableDeclaration() {
-    const kind = this.get().getText()
-    this.match(TokenType.CONST) || this.match(TokenType.LET) || this.match(TokenType.VAR)
-    const declarations: VariableDeclarator[] = []
+  private block(): IStatement {
+    const statements: IStatement[] = []
+    this.consume(TokenType.LBRACE)
+    while (!this.match(TokenType.RBRACE)) {
+      const statement = this.statement()
+      statement && statements.push(statement)
+      while (this.match(TokenType.SEMIKOLON));
+    }
+    return new BlockStatement(statements)
+  }
+
+  private statement(): IStatement | null {
+    if (this.match(TokenType.LOG)) return new LogStatement(this.expression())
+
+    // BlockStatement[?Yield, ?Await, ?Return]
+    if (this.lookMatch(0, TokenType.LBRACE)) return this.block()
+    // VariableStatement[?Yield, ?Await]
+    // if (this.lookMatch(0, TokenType.VAR)) return this.lexicalDeclaration()
+    // EmptyStatement
+    // ExpressionStatement[?Yield, ?Await]
+    // IfStatement[?Yield, ?Await, ?Return]
+    // BreakableStatement[?Yield, ?Await, ?Return]
+    // ContinueStatement[?Yield, ?Await]
+    // BreakStatement[?Yield, ?Await]
+    // [+Return] ReturnStatement[?Yield, ?Await]
+    // WithStatement[?Yield, ?Await, ?Return]
+    // LabelledStatement[?Yield, ?Await, ?Return]
+    // ThrowStatement[?Yield, ?Await]
+    // TryStatement[?Yield, ?Await, ?Return]
+    // DebuggerStatement
+
+    // if (this.match(TokenType.IF)) return this.ifElseStatement()
+    // if (this.match(TokenType.WHILE)) return this.whileStatement()
+    // if (this.match(TokenType.DO)) return this.doWhileStatement()
+    // if (this.match(TokenType.FOR)) return this.forStatement()
+    // if (this.match(TokenType.BREAK)) return new BreakStatement()
+    // if (this.match(TokenType.CONTINUE)) return new ContinueStatement()
+    if (this.match(TokenType.RETURN)) return new ReturnStatement(this.expression())
+    // if (this.match(TokenType.USE)) return new UseStatement(this.expression())
+    // if (this.match(TokenType.DEBUGGER)) return new DebuggerStatement()
+
+    return null
+  }
+
+  // Declaration[Yield, Await] :
+  private declaration(): IStatement | null {
+    // HoistableDeclaration[?Yield, ?Await, ~Default]
+    const hoistableDeclaration = this.hoistableDeclaration()
+    if (hoistableDeclaration) return hoistableDeclaration
+    // ClassDeclaration[?Yield, ?Await, ~Default]
+    if (this.match(TokenType.CLASS)) return this.classDeclaration()
+    // LexicalDeclaration[+In, ?Yield, ?Await]
+    if (this.match(TokenType.CONST)) return this.lexicalDeclaration('const')
+    if (this.match(TokenType.LET)) return this.lexicalDeclaration('let')
+    return null
+  }
+
+  // HoistableDeclaration[Yield, Await, Default] :
+  public hoistableDeclaration(): IStatement | null {
+    // FunctionDeclaration[?Yield, ?Await, ?Default]
+    if (this.match(TokenType.FUNCTION)) return this.functionDeclaration()
+    // GeneratorDeclaration[?Yield, ?Await, ?Default]
+    // AsyncFunctionDeclaration[?Yield, ?Await, ?Default]
+    // AsyncGeneratorDeclaration[?Yield, ?Await, ?Default]
+    return null
+  }
+
+  // public variableDeclaration() {
+  //   this.consume(TokenType.VAR)
+  //   const declarations: VariableDeclarator[] = []
+  //   do {
+  //     const identifier = this.identifierOrArrayPattern()
+  //     declarations.push(new VariableDeclarator(identifier, this.match(TokenType.EQ) ? this.expression() : null))
+  //   } while (this.match(TokenType.COMMA))
+
+  //   return new LexicalDeclaration(declarations, 'var')
+  // }
+
+  public lexicalDeclaration(letOrConst: 'let' | 'const') {
+    const declarations: LexicalDeclarator[] = []
     do {
       const identifier = this.identifierOrArrayPattern()
 
       if (this.match(TokenType.EQ)) {
-        declarations.push(new VariableDeclarator(identifier, this.expression()))
-      } else if (kind === 'let' || kind === 'var') {
-        declarations.push(new VariableDeclarator(identifier, null))
+        declarations.push(new LexicalDeclarator(identifier, this.expression()))
+      } else if (letOrConst === 'let') {
+        declarations.push(new LexicalDeclarator(identifier, null))
       } else {
         throw new SyntaxError('Missing initializer in const declaration') // remain const
       }
     } while (this.match(TokenType.COMMA))
 
-    return new VaraibleDeclaration(declarations, kind)
+    return new LexicalDeclaration(declarations, letOrConst)
   }
 
   private classDeclaration(): IStatement {
-    const id = new Identifier(this.consume(TokenType.WORD).getText())
-    const hasExt = this.match(TokenType.EXTENDS)
-    const extends_ = hasExt ? new Identifier(this.consume(TokenType.WORD).getText()) : null
-    const classDeclaration = new ClassDeclarationStatement(id, extends_)
-    this.consume(TokenType.LBRACE)
-    while (!this.match(TokenType.RBRACE)) {
-      const static_ = this.match(TokenType.STATIC)
-      if (this.lookMatch(0, TokenType.WORD)) {
-        const id = this.identifier()
-        if (this.lookMatch(0, TokenType.LPAREN)) {
-          classDeclaration.addMethod(this.methodDefinition(id, static_))
-          continue
-        }
-        classDeclaration.addField(this.propertyDefinition(id, static_))
-        continue
-      }
-      if (this.match(TokenType.CONSTRUCTOR)) {
-        classDeclaration.addMethod(this.methodDefinition(new Identifier('constructor'), false, 'constructor'))
-        continue
-      }
-    }
+    const bindingIdentifier = this.bindingIdentifier()
+    const classTail = this.classTail()
+
+    const classDeclaration = new ClassDeclaration(bindingIdentifier, classTail)
 
     return classDeclaration
   }
 
-  private methodDefinition(name: Identifier, static_ = false, type?: KindMethod): MethodDefinition {
-    return new MethodDefinition(name, this.functionExpression(name), static_, type)
+  private classExpression() {
+    const id = this.lookMatch(0, TokenType.WORD) ? this.bindingIdentifier() : null
+    const tail = this.classTail()
   }
 
-  private propertyDefinition(key: Identifier, static_ = false): PropertyDefinition {
+  private classTail() {
+    const classHeritage = this.lookMatch(0, TokenType.EXTENDS) ? this.classHeritage() : null
+    const classBody = this.classBody()
+    return new ClassTail(classHeritage, classBody)
+  }
+
+  private classHeritage() {
+    this.consume(TokenType.EXTENDS)
+    return this.bindingIdentifier()
+  }
+
+  private classBody(): (MethodDefinition | FieldDefinition)[] {
+    const classElementList: (MethodDefinition | FieldDefinition)[] = []
+
+    this.consume(TokenType.LBRACE)
+    while (!this.match(TokenType.RBRACE)) {
+      const static_ = this.match(TokenType.STATIC)
+      if (this.lookMatch(0, TokenType.WORD)) {
+        const id = this.bindingIdentifier()
+        if (this.lookMatch(0, TokenType.LPAREN)) {
+          classElementList.push(this.methodDefinition(id, static_))
+          continue
+        }
+        classElementList.push(this.fieldDefinition(id, static_))
+        continue
+      }
+      if (this.match(TokenType.CONSTRUCTOR)) {
+        classElementList.push(this.methodDefinition(new Identifier('constructor'), false))
+        continue
+      }
+    }
+    return classElementList
+  }
+
+  private methodDefinition(name: Identifier, static_ = false): MethodDefinition {
+    return new MethodDefinition(name, this.params(), this.block(), static_)
+  }
+
+  private fieldDefinition(key: Identifier, static_ = false): FieldDefinition {
     const value = this.match(TokenType.EQ) ? this.expression() : null
-    return new PropertyDefinition(key, value, static_)
+    return new FieldDefinition(key, value, static_)
   }
 
   private expression(): IExpression {
@@ -235,13 +291,13 @@ export default class Parser {
   }
 
   private functionDeclaration(): FunctionDeclarationStatement {
-    const name = new Identifier(this.consume(TokenType.WORD).getText())
+    const name = this.bindingIdentifier()
 
     return new FunctionDeclarationStatement(name, this.params(), this.block())
   }
 
   private functionExpression(name: Identifier | null = null): FunctionExpression {
-    const id = this.lookMatch(0, TokenType.WORD) ? new Identifier(this.consume(TokenType.WORD).getText()) : null
+    const id = this.lookMatch(0, TokenType.WORD) ? this.bindingIdentifier() : null
 
     return new FunctionExpression(id, name, this.params(), this.block())
   }
@@ -255,25 +311,22 @@ export default class Parser {
     return new FunctionExpression(null, name, params, body)
   }
 
-  private arrayLiteral(): IExpression {
-    let index = 1
+  private arrayLiteralOrArrayPattern(): IExpression {
+    let index = 0
 
     let type = this.get(index).getType()
-    // pass brackets
-    for (
-      let bracket = 0;
-      (!(type === TokenType.RBRACKET) && !(type === TokenType.EOF)) || !(bracket === 0);
-      type = this.get(++index).getType()
-    ) {
+
+    for (let bracket = 0; !(type === TokenType.RBRACKET || type === TokenType.EOF) || !(bracket === 0); ) {
       if (type === TokenType.LBRACKET) ++bracket
       if (type === TokenType.RBRACKET) --bracket
+      type = this.get(++index).getType()
     }
-    const isArrayExpression = !this.lookMatch(index + 1, TokenType.EQ)
-    if (isArrayExpression) return this.arrayExprestion()
+    const isArrayExpression = this.lookMatch(index + 1, TokenType.EQ) === false
+    if (isArrayExpression) return this.arrayLiteral()
 
     const arrayPattern = this.arrayPattern()
     this.consume(TokenType.EQ)
-    const arrayExprestion = this.arrayLiteral()
+    const arrayExprestion = this.arrayLiteralOrArrayPattern()
     return new AssignmentExpression(AssignmentOperator.ASSIGNMENT, arrayPattern, arrayExprestion)
   }
 
@@ -290,17 +343,16 @@ export default class Parser {
   }
 
   private identifierOrArrayPattern(): IAccessible {
-    if (this.lookMatch(0, TokenType.WORD)) return new Identifier(this.consume(TokenType.WORD).getText())
+    if (this.lookMatch(0, TokenType.WORD)) return this.bindingIdentifier()
     return this.arrayPattern()
   }
 
-  private identifier(): Identifier {
+  private bindingIdentifier(): Identifier {
     return new Identifier(this.consume(TokenType.WORD).getText())
   }
 
-  private arrayExprestion(): IExpression {
+  private arrayLiteral(): IExpression {
     this.consume(TokenType.LBRACKET)
-    //TODO: elements change class arrayElements
     const elements: (IExpression | null)[] = []
     while (!this.match(TokenType.RBRACKET)) {
       const expr = this.lookMatch(0, TokenType.COMMA) ? null : this.expression()
@@ -316,7 +368,7 @@ export default class Parser {
     this.consume(TokenType.LBRACE)
     const elements: Map<IAccessible, IExpression> = new Map()
     while (!this.match(TokenType.RBRACE)) {
-      const key = this.property()
+      const key = this.literalPropertyName()
 
       if (this.lookMatch(0, TokenType.LPAREN)) {
         const name = key instanceof Identifier ? key : null
@@ -398,6 +450,13 @@ export default class Parser {
     return this.primaryExpression()
   }
 
+  // private updateExpression(): IExpression {
+  //   if (this.match(TokenType.PLUSPLUS))
+  //   return new UpdateExpression(UpdateExpression.Operator.INCREMENT, this.leftValue())
+  // if (this.match(TokenType.MINUSMINUS))
+  //   return new UpdateExpression(UpdateExpression.Operator.DECREMENT, this.leftValue())
+  // }
+
   private primaryExpression(): IExpression {
     if (this.lookMatch(0, TokenType.WORD) || this.lookMatch(0, TokenType.THIS)) {
       const leftOrRightValue = this.leftOrRightValue()
@@ -411,7 +470,7 @@ export default class Parser {
       return leftOrRightValue
     }
 
-    if (this.lookMatch(0, TokenType.LBRACKET)) return this.arrayLiteral()
+    if (this.lookMatch(0, TokenType.LBRACKET)) return this.arrayLiteralOrArrayPattern()
     if (this.lookMatch(0, TokenType.LBRACE)) return this.objectLiteral()
 
     if (this.lookMatch(0, TokenType.LPAREN)) {
@@ -428,13 +487,17 @@ export default class Parser {
   private variable(): IExpression {
     if (this.match(TokenType.SUPER)) return this.callExpression(new Super())
 
+    const obj = { true: 123 }
+
     return this.literal()
   }
 
-  private property(): IAccessible {
+  private literalPropertyName(): IAccessible {
     const current = this.get()
 
-    if (this.match(TokenType.WORD)) return new Identifier(current.getText()) // for property object {'a': 123} => {a: 123}
+    if (this.lookMatch(0, TokenType.WORD)) return this.bindingIdentifier()
+    if (this.match(TokenType.TEXT)) return this.stringLiteral(current.getText(), current.getRaw())
+    if (this.match(TokenType.NUMBER)) return this.numericLiteral(current.getText(), current.getRaw())
     if (this.match(TokenType.TRUE)) return new Identifier(current.getText())
     if (this.match(TokenType.FALSE)) return new Identifier(current.getText())
 
@@ -448,8 +511,7 @@ export default class Parser {
     if (this.match(TokenType.TRUE) || this.match(TokenType.FALSE))
       return this.booleanLiteral(current.getText(), current.getRaw())
     if (this.match(TokenType.TEXT)) return this.stringLiteral(current.getText(), current.getRaw())
-    if (this.match(TokenType.NUMBER)) return this.numbericLiteral(current.getText(), current.getRaw())
-    // if (this.match(TokenType.WORD)) return new Literal(current.getText(), current.getRaw())
+    if (this.match(TokenType.NUMBER)) return this.numericLiteral(current.getText(), current.getRaw())
 
     throw this.error('Expression expected instead get ' + current)
   }
@@ -462,7 +524,7 @@ export default class Parser {
     return new Literal(value === 'true', raw)
   }
 
-  private numbericLiteral(value: string, raw: string): IAccessible {
+  private numericLiteral(value: string, raw: string): IAccessible {
     return new Literal(Number(value), raw)
   }
 
@@ -493,8 +555,7 @@ export default class Parser {
 
   private leftOrRightValue(): IAccessible | CallExpression | ThisExpression {
     if (this.lookMatch(0, TokenType.WORD)) {
-      const word = this.consume(TokenType.WORD)
-      return this.maybeCallOrMember(new Identifier(word.getText()))
+      return this.maybeCallOrMember(this.bindingIdentifier())
     }
     this.consume(TokenType.THIS)
     return this.maybeCallOrMember(new ThisExpression())

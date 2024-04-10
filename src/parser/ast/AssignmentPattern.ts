@@ -2,7 +2,6 @@ import IExpression from './IExpression'
 import IVisitor from './IVisitor'
 import { IAccessible } from './IAccessible'
 import IECMAScriptLanguageType from 'parser/lib/IValue'
-import { Variables } from 'parser/lib/Variables'
 import UndefinedType from 'parser/lib/types/UndefinedValue'
 
 export class AssignmentPattern implements IExpression, IAccessible {
